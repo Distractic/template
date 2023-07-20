@@ -1,0 +1,259 @@
+package com.github.rushyverse.rtf.manager
+
+import com.github.rushyverse.rtf.RTF
+import com.github.rushyverse.rtf.RTF.Companion.translationsProvider
+import com.github.rushyverse.rtf.TeamRTF
+import com.github.rushyverse.rtf.client.ClientRTF
+import com.github.rushyverse.rtf.config.MapConfig
+import com.github.rushyverse.rtf.config.RTFConfig
+import com.github.shynixn.mccoroutine.bukkit.scope
+import com.github.rushyverse.api.extension.toPos
+import com.github.rushyverse.api.game.GameData
+import com.github.rushyverse.api.game.GameState
+import com.github.rushyverse.api.schedule.SchedulerTask
+import net.kyori.adventure.text.Component.text
+import org.bukkit.GameMode
+import org.bukkit.Location
+import org.bukkit.Material
+import org.bukkit.World
+import org.bukkit.entity.Player
+import org.bukkit.inventory.ItemStack
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.random.Random
+import kotlin.time.Duration.Companion.seconds
+
+class Game(
+    val plugin: RTF,
+    val id: Int,
+    val world: World,
+    val config: RTFConfig,
+    val mapConfig : MapConfig
+) {
+    val data = GameData("rtf", id)
+
+    val players: Collection<Player>
+        get() = world.players
+
+    val startingTask = SchedulerTask(plugin.scope, 1.seconds)
+
+    val minPlayers = 2 // to delete, use config instead
+
+    val teams: MutableList<TeamRTF>
+
+    init {
+        teams = mutableListOf()
+        for (teamConfig in mapConfig.teams) {
+            val team = TeamRTF(teamConfig, world)
+            teams.add(team)
+        }
+    }
+
+    fun state(): GameState = data.state
+
+    private fun sendBasicKit(player: Player) {
+        val inv = player.inventory
+
+        inv.helmet = ItemStack(Material.LEATHER_HELMET)
+        inv.chestplate = ItemStack(Material.LEATHER_CHESTPLATE)
+        inv.leggings = ItemStack(Material.LEATHER_LEGGINGS)
+        inv.boots = ItemStack(Material.LEATHER_BOOTS)
+        inv.addItem(ItemStack(Material.IRON_SWORD))
+        inv.addItem(ItemStack(Material.IRON_PICKAXE))
+        inv.addItem(ItemStack(Material.SMOOTH_SANDSTONE).apply { amount = 64 })
+
+        player.sendActionBar(text("§EKit actuel : §6Basique"))
+    }
+
+    suspend fun start(force: Boolean = false) {
+        if (force) {
+            data.state = GameState.STARTED
+
+            broadcast("game.message.started")
+
+            teams.forEach { team ->
+                team.members.forEach { member ->
+                    member.requirePlayer().apply {
+                        teleport(team.spawnPoint)
+                        sendBasicKit(this)
+                    }
+                }
+            }
+
+        } else {
+            val time = AtomicInteger(5)
+
+            data.state = GameState.STARTING
+
+            startingTask.add { startingTask(this, time) }
+            startingTask.run()
+        }
+
+        plugin.saveUpdate(data)
+    }
+
+    private suspend fun startingTask(task: SchedulerTask.Task, atomicTime: AtomicInteger) {
+        val time = atomicTime.get()
+        if (time == 0) {
+            start(true)
+            task.remove() // end the repeating task
+            return
+        }
+        broadcast("game.message.starting", listOf(time))
+        atomicTime.set(time - 1)
+    }
+
+    fun getClientTeam(client: ClientRTF): TeamRTF? {
+        return teams.firstOrNull { it.members.contains(client) }
+    }
+
+    suspend fun clientSpectate(client: ClientRTF) {
+        val player = client.requirePlayer()
+
+        client.fastBoard.apply {
+            updateTitle("§B§LRTF #${data.id}")
+
+            val teamsList = mutableListOf<String>()
+            for (team in teams){
+                val teamName = team.type.name(translationsProvider, client.locale)
+                val state = team.flagStolenState
+                teamsList.add(teamName)
+            }
+
+            updateLines(
+                "",
+                "§D§L§DSPECTATE MODE",
+                "Use §E/rtf join",
+                "",
+                *teamsList.toTypedArray(),
+                "",
+                "rushy.space"
+            )
+        }
+
+        player.gameMode = GameMode.SPECTATOR
+        player.inventory.clear()
+        player.teleport(world.spawnLocation)
+
+
+
+        data.players = players.size
+
+        plugin.saveUpdate(data)
+    }
+
+    private fun findJoinTeam(): TeamRTF {
+        val minPlayers = teams.minOf { it.members.size }
+        val smallestTeams = teams.filter { it.members.size == minPlayers }
+
+        return smallestTeams[Random.nextInt(smallestTeams.size)]
+    }
+
+    suspend fun clientJoin(client: ClientRTF) {
+        val player = client.requirePlayer()
+        val joinedTeam = findJoinTeam().also {
+            player.teleport(it.spawnPoint)
+            player.gameMode = GameMode.SURVIVAL
+            it.members.add(client)
+        }
+
+        broadcast("player.join.team", listOf(player.name, joinedTeam.type.name))
+
+        client.fastBoard.updateLines(
+            "",
+            "§FYour team: ${joinedTeam.type.name}",
+            "    §6Flag: §Aplaced",
+            "",
+            "Other team: 0",
+            "",
+            "rushy.space"
+        )
+    }
+
+    suspend fun clientLeave(client: ClientRTF) {
+        val playersSize = players.size
+        val team = teams.firstOrNull { it.members.contains(client) }
+        team?.members?.remove(client)
+
+        data.players = playersSize
+
+        // Leave while game is starting and the current number of players is not reached
+        if (playersSize < minPlayers) {
+
+            when (data.state) {
+                GameState.STARTING -> {
+                    startingTask.tasks[0].remove()
+
+                    broadcast("game.message.client.leave.starting")
+                    data.state = GameState.WAITING
+                }
+
+                GameState.STARTED -> {
+                    teams.forEach {
+                        if (it.members.isEmpty()) {
+                            end(GameEndCause.TEAM_EMPTY)
+                        }
+                    }
+                }
+
+                else -> {}
+            }
+
+        }
+
+        plugin.saveUpdate(data)
+    }
+
+    suspend fun clientPickupFlag(client: ClientRTF, flagTeam: TeamRTF) {
+        val player = client.requirePlayer()
+
+        flagTeam.flagStolenState = true
+        client.stats.flagAttempts += 1
+
+        broadcast("player.pickup.flag", listOf(player.name, flagTeam.type.name))
+    }
+
+    suspend fun clientPlaceFlag(client: ClientRTF, flagTeam: TeamRTF) {
+        val player = client.requirePlayer()
+
+        client.stats.flagPlaces += 1
+        flagTeam.flagStolenState = false
+
+        broadcast("player.place.flag", listOf(player.name, flagTeam.type.name))
+    }
+
+    /**
+     * Ends this game.
+     * The game state is set to ENDING while players are teleported and the world is destroyed.
+     */
+    fun end(cause: GameEndCause) {
+        data.state = GameState.ENDING
+
+        teams.forEach { it.members.clear() }
+
+        for (player in players) {
+            player.performCommand(config.game.backToHubCommand)
+        }
+
+        data.state = GameState.WAITING
+
+        plugin.saveUpdate(data)
+    }
+
+    suspend fun broadcast(key: String, args: List<Any> = emptyList()) = plugin.broadcast(world, key, args)
+
+    fun isProtectedLocation(location: Location): Boolean {
+        val pos = location.toPos()
+        for (team in teams){
+            if (team.spawnCuboid.contains(pos) || team.flagCuboid.contains(pos)){
+                return true
+            }
+        }
+        return false
+    }
+
+    fun isBlockAllowed(blockType: Material): Boolean {
+        return mapConfig.allowedBlocks.contains(blockType)
+    }
+
+
+}

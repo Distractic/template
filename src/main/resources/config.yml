@@ -1,0 +1,62 @@
+# Is the server dedicated exclusively to this game?
+# If so, the server will automatically connect in game on join.
+dedicated-server: false
+
+#
+rtf-command-enabled: true
+
+multi-world:
+  enabled: true
+  max-worlds: 10
+
+# Share game data with others services in the network.
+data-provider:
+  json:
+    path: games.json
+    enabled: true
+  # Not implemented
+  plugin-message:
+    message: rtf|<gameID>|
+    enabled: false
+  # Not implemented
+  redis-message:
+    message: rtf|
+    enabled: false
+
+game:
+  min-players: 4
+  max-players: 10
+  back-to-hub-command: hub
+
+rewards:
+  assist: 5.xp
+  kill: 10.xp
+  win: 100.xp 30.coins
+  lose: 25.xp 10.coins
+  vip-multiplier: 2
+
+maps:
+  classic:
+    limit-y: 40
+    # Authorized blocks in a game. For each of indicated blocks, system will apply the auto refill on the stack.
+    allowed-blocks:
+      - SMOOTH_SANDSTONE
+    teams:
+      red:
+        spawn-point: -1.5 53 71.5 -180
+        spawn-cuboid:
+          pos1: -3 52 71
+          pos2: 2 56 66
+        flag-point: -2 54 62
+        flag-cuboid:
+          pos1: -4 52 61
+          pos2: 0 55 65
+      blue:
+        spawn-point: -1.5 53 -72.5
+        spawn-cuboid:
+          pos1: -1 53 -73
+          pos2: -6 56 -68
+        flag-point: -2 54 -64
+        flag-cuboid:
+          pos1: 0 53 -63
+          pos2: -4 55 -67

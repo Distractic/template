@@ -1,0 +1,27 @@
+spawn-point: -40.5 70 0 -90 25
+limit-y: 40
+cuboid:
+  pos1: 100 100 -74
+  pos2: -100 40 72
+
+# Teams can be registered are RED, BLUE, GREEN or PURPLE.
+# The RTF can have a minimum of 2 teams.
+teams:
+  red:
+    spawn-point: -1.5 53 71.5 -180
+    spawn-protection:
+      pos1: -3 52 71
+      pos2: 2 56 66
+    flag-point: -2 54 62
+    flag-protection:
+      pos1: -4 52 61
+      pos2: 0 55 65
+  blue:
+    spawn-point: -1.5 53 -72.5
+    spawn-protection:
+      pos1: -1 53 -73
+      pos2: -6 56 -68
+    flag-point: -2 54 -64
+    flag-protection:
+      pos1: 0 53 -63
+      pos2: -4 55 -67

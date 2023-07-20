@@ -1,0 +1,7 @@
+name: rtf
+version: 1.0
+author: Quentixx
+api-version: 1.19
+main: com.github.rushyverse.rtf.RTF
+depend:
+  - bukkit-api
