@@ -58,6 +58,20 @@ class GameListener(
             }
         }
     }
+    @EventHandler
+    suspend fun onPlayerRespawn(event: PlayerRespawnEvent) {
+        val player = event.player
+        val world = player.world
+        val game = games.getByWorld(world) ?: return
+        val client = clients.getClient(player) as ClientRTF
+        val team = game.getClientTeam(client)
+
+        if (team == null) {
+            event.respawnLocation = world.spawnLocation
+        } else {
+            event.respawnLocation = team.spawnPoint
+        }
+    }
 
     @EventHandler
     suspend fun onMove(event: PlayerMoveEvent) {
