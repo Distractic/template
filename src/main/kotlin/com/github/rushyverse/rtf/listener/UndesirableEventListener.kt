@@ -7,6 +7,8 @@ import org.bukkit.event.weather.WeatherChangeEvent
 
 class UndesirableEventListener : Listener {
 
+    private fun isRTFWorld(world: World) = world.name.contains("rtf")
+
     @EventHandler
     fun onFoodLevelChange(event: FoodLevelChangeEvent) {
         event.isCancelled = true
