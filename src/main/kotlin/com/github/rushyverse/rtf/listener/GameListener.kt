@@ -80,7 +80,12 @@ class GameListener(
         val game = games.getByWorld(world) ?: return
 
         if (event.to.y <= game.mapConfig.limitY) {
-            player.health = 0.0
+            val gameMode = player.gameMode
+            if (gameMode == GameMode.SPECTATOR) {
+                player.teleport(game.world.spawnLocation)
+            } else if (gameMode == GameMode.SURVIVAL) {
+                player.health = 0.0
+            }
         }
     }
 
