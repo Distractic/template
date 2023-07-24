@@ -4,12 +4,11 @@ import com.github.rushyverse.rtf.RTF
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.api.player.*
 import net.kyori.adventure.text.Component
-import org.bukkit.event.Listener
 import java.util.concurrent.atomic.AtomicReference
 
 class RTFClientEvents(
     val plugin: RTF
-) : PluginClientEvents(), Listener {
+) : PluginClientEvents() {
 
 
     override suspend fun onJoin(client: Client, joinMessage: AtomicReference<Component?>) {
