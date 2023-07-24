@@ -234,9 +234,11 @@ class Game(
             player.performCommand(config.game.backToHubCommand)
         }
 
-        data.state = GameState.WAITING
-
-        plugin.saveUpdate(data)
+        BukkitRunnable {
+           plugin.launch {
+               plugin.gameManager.removeGameAndDeleteWorld(this@Game)
+           }
+        }.runTaskLater(plugin, 40L)
     }
 
     suspend fun broadcast(key: String, args: List<Any> = emptyList()) = plugin.broadcast(world, key, args)

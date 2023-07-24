@@ -67,5 +67,35 @@ class GameManager(val plugin: RTF) {
         return plugin.server.createWorld(creator) ?: throw IllegalStateException("Can't create world for $worldName")
     }
 
+    /**
+     * Unloads and deletes the world of the given game.
+     * After the file deletion, game is removed from the list
+     * and from [SharedGameData].
+     * This method also calls [SharedGameData.callOnChange] to update related games services.
+     *
+     * May not work properly if players are still present in the world.
+     */
+    suspend fun removeGameAndDeleteWorld(
+        game: Game,
+        coroutineContext: CoroutineContext = Dispatchers.IO
+    ) {
+        val world = game.world
+        val file = world.worldFolder
+
+        Bukkit.unloadWorld(world, false)
+
+        withContext(coroutineContext) {
+            file.deleteRecursively()
+        }
+
+        sharedGameData.apply {
+            games.removeIf { it.id == game.id }
+            callOnChange()
+        }
+
+        games.remove(game)
+    }
+
+
     fun getGame(gameIndex: Int) = games.firstOrNull { it.id == gameIndex }
 }
