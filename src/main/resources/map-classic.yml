@@ -1,0 +1,61 @@
+world-template-name: classic
+limit-y: 40
+# Authorized blocks in a game. For each of indicated blocks, system will apply the auto refill on the stack.
+allowed-blocks:
+  - SMOOTH_SANDSTONE
+teams:
+  red:
+    spawn-point:
+      x: -1.5
+      y: 53
+      z: 71.5
+      yaw: -180
+    spawn-cuboid:
+      pos1:
+        x: -3
+        y: 52
+        z: 71
+      pos2:
+        x: 2
+        y: 56
+        z: 66
+    flag-point:
+      x: -2
+      y: 54
+      z: 62
+    flag-cuboid:
+      pos1:
+        x: -4
+        y: 52
+        z: 61
+      pos2:
+        x: 0
+        y: 55
+        z: 65
+  blue:
+    spawn-point:
+      x: -1.5
+      y: 53
+      z: -72.5
+    spawn-cuboid:
+      pos1:
+        x: -1
+        y: 53
+        z: -73
+      pos2:
+        x: -6
+        y: 56
+        z: -68
+    flag-point:
+      x: -2
+      y: 54
+      z: -64
+    flag-cuboid:
+      pos1:
+        x: 0
+        y: 53
+        z: -63
+      pos2:
+        x: -4
+        y: 55
+        z: -67

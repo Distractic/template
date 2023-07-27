@@ -1,49 +1,71 @@
 package com.github.rushyverse.rtf.config
 
-import com.github.rushyverse.api.extension.getSectionOrException
+import com.charleskorn.kaml.Yaml
+import com.github.rushyverse.api.configuration.reader.YamlFileReader
+import com.github.rushyverse.api.configuration.reader.readConfigurationFile
 import com.github.rushyverse.api.game.team.TeamType
+import com.github.rushyverse.api.koin.inject
+import com.github.rushyverse.api.serializer.LocationSerializer
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import org.bukkit.Location
 import org.bukkit.Material
-import org.bukkit.configuration.ConfigurationSection
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.descriptors.SerialDescriptor
+import org.bukkit.plugin.java.JavaPlugin
 
+class MapConfigListSerializer : KSerializer<List<MapConfig>> {
+
+    private val plugin : JavaPlugin by inject<JavaPlugin>()
+    private val mapNameSerializer = ListSerializer(String.serializer())
+
+    override val descriptor: SerialDescriptor = mapNameSerializer.descriptor
+
+    override fun deserialize(decoder: Decoder): List<MapConfig> {
+        val mapFileNames = mapNameSerializer.deserialize(decoder)
+        val mapConfigs = mutableListOf<MapConfig>()
+
+        for (fileName in mapFileNames) {
+            val configReader = YamlFileReader(plugin, Yaml.default)
+            val mapConfig = configReader.readConfigurationFile<MapConfig>(fileName)
+
+            mapConfigs.add(mapConfig)
+        }
+
+        return mapConfigs
+    }
+
+    override fun serialize(encoder: Encoder, value: List<MapConfig>) {
+       throw UnsupportedOperationException("Operation not supported.")
+    }
+
+}
+
+
+@Suppress("PROVIDED_RUNTIME_TOO_LOW")
+@Serializable
+@SerialName("map")
 data class MapConfig(
+    val worldTemplateName: String,
     val limitY: Int,
     val allowedBlocks: Set<Material>,
     val teams: List<TeamRTFConfig>
-) {
-    companion object {
-        fun parse(section: ConfigurationSection) = MapConfig(
-            section.getInt("limit-y"),
-            parseMaterials(section.getStringList("allowed-blocks")),
-            parseTeamsList(section.getSectionOrException("teams"))
-        )
+)
 
-        private fun parseMaterials(list: List<String>): Set<Material> {
-            val mutableSet = mutableSetOf<Material>()
-            for (blockTypeName in list) {
-                mutableSet.add(Material.valueOf(blockTypeName))
-            }
-            return mutableSet
-        }
+@Suppress("PROVIDED_RUNTIME_TOO_LOW")
+@Serializable
+data class TeamRTFConfig(
+    val type: TeamType,
+    @Serializable(with = LocationSerializer::class)
+    val spawnPoint: Location,
+    //val spawnCuboid: CubeArea, TODO: serializer not implemented
+    @Serializable(with = LocationSerializer::class)
+    val flagPoint: Location,
+    //val flagCuboid: CubeArea, TODO: serializer not implemented
+    val flagMaterial: Material,
+)
 
-        private fun parseTeamsList(section: ConfigurationSection): List<TeamRTFConfig> {
-            val teamsList = mutableListOf<TeamRTFConfig>()
-
-            for (supportedTeamType in TeamType.values()) {
-                val teamName = supportedTeamType.name.lowercase()
-                val teamSection = section.getConfigurationSection(teamName) ?: continue
-                teamsList.add(TeamRTFConfig.parse(teamSection))
-            }
-
-            return teamsList
-        }
-
-        fun parseMaps(section: ConfigurationSection): List<MapConfig> {
-            val listOfMaps = mutableListOf<MapConfig>()
-            for (map in section.getKeys(false)){
-                listOfMaps.add(parse(section.getSectionOrException(map)))
-            }
-            return listOfMaps
-        }
-
-    }
-}
