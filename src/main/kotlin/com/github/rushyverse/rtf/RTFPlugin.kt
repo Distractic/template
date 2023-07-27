@@ -1,17 +1,29 @@
 package com.github.rushyverse.rtf
 
+import com.charleskorn.kaml.Yaml
+import com.github.rushyverse.api.Plugin
+import com.github.rushyverse.api.configuration.reader.IFileReader
+import com.github.rushyverse.api.configuration.reader.YamlFileReader
+import com.github.rushyverse.api.configuration.reader.readConfigurationFile
+import com.github.rushyverse.api.extension.registerListener
+import com.github.rushyverse.api.koin.inject
+import com.github.rushyverse.api.koin.loadModule
+import com.github.rushyverse.api.listener.PlayerListener
+import com.github.rushyverse.api.player.Client
+import com.github.rushyverse.api.player.ClientManager
+import com.github.rushyverse.api.translation.ResourceBundleTranslationProvider
+import com.github.rushyverse.api.translation.TranslationProvider
+import com.github.rushyverse.api.translation.registerResourceBundleForSupportedLocales
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.commands.RTFCommand
 import com.github.rushyverse.rtf.config.RTFConfig
-import com.github.rushyverse.rtf.listener.*
-import com.github.rushyverse.rtf.manager.GameManager
+import com.github.rushyverse.rtf.game.GameManager
+import com.github.rushyverse.rtf.listener.AuthenticationListener
+import com.github.rushyverse.rtf.listener.GameListener
+import com.github.rushyverse.rtf.listener.UndesirableEventListener
 import com.github.shynixn.mccoroutine.bukkit.scope
-import com.github.rushyverse.api.Plugin
-import com.github.rushyverse.api.extension.registerListener
-import com.github.rushyverse.api.game.GameData
-import com.github.rushyverse.api.koin.inject
-import com.github.rushyverse.api.player.*
-import com.github.rushyverse.api.translation.*
+import dev.jorel.commandapi.CommandAPI
+import dev.jorel.commandapi.CommandAPIBukkitConfig
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
 import kotlinx.coroutines.plus
@@ -20,19 +32,18 @@ import org.bukkit.entity.Player
 import java.io.File
 import java.util.*
 
-class RTF(
-    override val id: String = "RTFPlugin",
+class RTFPlugin(
+    override val id: String = ID,
 ) : Plugin() {
 
     companion object {
         const val BUNDLE_RTF = "rtf_translate"
+        const val ID = "RTF"
 
-        lateinit var translationsProvider: TranslationsProvider
+        lateinit var translationsProvider: TranslationProvider
             private set
     }
 
-
-    override val clientEvents: PluginClientEvents = RTFClientEvents(this)
 
     lateinit var config : RTFConfig private set
 
@@ -40,30 +51,39 @@ class RTF(
 
     lateinit var tempDir: File private set
 
-    lateinit var gameManager: GameManager private set
-
-
     override suspend fun onEnableAsync() {
         super.onEnableAsync()
+        modulePlugin<RTFPlugin>()
 
-        config = RTFConfig.parse(getConfig())
-        saveDefaultConfig()
+
+        val configReader = createYamlReader()
+        config = configReader.readConfigurationFile<RTFConfig>("config.yml")
+
         logger.info("Configuration Summary: $config")
 
         mapsDir = File(dataFolder, "maps").apply { mkdirs() }
         tempDir = setupTempDir()
 
-        translationsProvider = createTranslationsProvider()
+        translationsProvider = createTranslationProvider()
 
-        gameManager = GameManager(this)
+        loadModule(id) {
+            single { GameManager(this@RTFPlugin) }
+        }
 
         RTFCommand(this).register()
 
-        modulePlugin<RTF>()
-        moduleClients()
-
+        registerListener { AuthenticationListener() }
         registerListener { UndesirableEventListener() }
-        registerListener { GameListener(this) }
+        registerListener { GameListener() }
+    }
+
+    /**
+     * Create a new instance of yaml reader.
+     * @return The instance of the yaml reader.
+     */
+    private fun createYamlReader(): IFileReader {
+        val yaml = Yaml.default
+        return YamlFileReader(this, yaml)
     }
 
     private fun setupTempDir() = File(dataFolder, "temp").apply {
@@ -77,10 +97,6 @@ class RTF(
         }
     }
 
-    override suspend fun onDisableAsync() {
-        super.onDisableAsync()
-    }
-
     override fun createClient(player: Player): Client {
         return ClientRTF(
             pluginId = id,
@@ -89,8 +105,8 @@ class RTF(
         )
     }
 
-    override suspend fun createTranslationsProvider(): ResourceBundleTranslationsProvider {
-        return (super.createTranslationsProvider()).apply {
+    override suspend fun createTranslationProvider(): ResourceBundleTranslationProvider {
+        return (super.createTranslationProvider()).apply {
             registerResourceBundleForSupportedLocales(BUNDLE_RTF, ResourceBundle::getBundle)
         }
     }
@@ -111,9 +127,4 @@ class RTF(
             }
         }
     }
-
-    fun saveUpdate(data: GameData) {
-        gameManager.sharedGameData.saveUpdate(data)
-    }
-
 }
