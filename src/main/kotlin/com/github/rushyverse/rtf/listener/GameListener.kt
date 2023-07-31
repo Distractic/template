@@ -1,29 +1,30 @@
 package com.github.rushyverse.rtf.listener
 
-import com.github.rushyverse.rtf.RTF
-import com.github.rushyverse.rtf.client.ClientRTF
-import com.github.rushyverse.rtf.manager.GameManager
-import com.github.rushyverse.api.extension.toPos
 import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
+import com.github.rushyverse.rtf.RTFPlugin
+import com.github.rushyverse.rtf.client.ClientRTF
+import com.github.rushyverse.rtf.game.GameManager
+import net.kyori.adventure.text.Component
 import org.bukkit.GameMode
+import org.bukkit.Material
 import org.bukkit.entity.EntityType
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageEvent
+import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.PlayerChangedWorldEvent
 import org.bukkit.event.player.PlayerMoveEvent
 import org.bukkit.event.player.PlayerRespawnEvent
+import org.bukkit.inventory.Inventory
 
-class GameListener(
-    private val plugin: RTF
-) : Listener {
+class GameListener : Listener {
 
-    private val games: GameManager = plugin.gameManager
-    private val clients: ClientManager by inject(plugin.id)
+    private val games: GameManager by inject(RTFPlugin.ID)
+    private val clients: ClientManager by inject(RTFPlugin.ID)
 
     @EventHandler
     suspend fun onChangeWorld(event: PlayerChangedWorldEvent) {
@@ -35,6 +36,55 @@ class GameListener(
 
             game.clientLeave(clients.getClient(player) as ClientRTF)
         }
+    }
+
+    @EventHandler
+    suspend fun onPlayerDeath(event: PlayerDeathEvent) {
+        val player = event.player
+        val game = games.getByWorld(player.world) ?: return
+        val client = clients.getClient(player) as ClientRTF
+        val team = game.getClientTeam(client) ?: return
+        val killer = player.killer
+
+        client.stats.incDeaths()
+
+        event.keepInventory = true
+
+        val deathMessage = StringBuilder(player.name)
+        deathMessage.append(" ")
+
+        if (killer != null) {
+            val clientKiller = clients.getClient(killer) as ClientRTF
+
+            clientKiller.stats.incKills()
+            clientKiller.reward(game.config.rewards.kill)
+
+            deathMessage.append("was killed by ${killer.name}")
+        } else {
+            deathMessage.append("fell into the void")
+        }
+
+        val wool = getWoolIfContain(player.inventory)
+        if (wool != null) {
+            val flagTeam = game.teams.firstOrNull { it.flagMaterial == wool } ?: return
+            game.clientDeathWithFlag(client, flagTeam)
+
+            deathMessage.append(" with the ${flagTeam.type.name} flag!")
+        }
+
+        event.deathMessage(Component.text(deathMessage.toString()))
+    }
+
+    private fun getWoolIfContain(inv: Inventory): Material? {
+        for (item in inv.contents) {
+            val type = item?.type ?: continue
+
+            if (type.name.endsWith("_WOOL")) {
+                return item.type
+            }
+        }
+
+        return null
     }
 
     @EventHandler
@@ -53,12 +103,13 @@ class GameListener(
             } else {
                 val team = game.getClientTeam(client) ?: return
 
-                if (team.spawnCuboid.contains(entity.location.toPos())) {
+               if (team.spawnCuboid.isInArea(entity.location)) {
                     event.isCancelled = true
                 }
             }
         }
     }
+
     @EventHandler
     suspend fun onPlayerRespawn(event: PlayerRespawnEvent) {
         val player = event.player
@@ -146,6 +197,7 @@ class GameListener(
                         game.clientPickupFlag(client, flagTeam)
                     }
                 }
+
                 !game.isBlockAllowed(type) -> event.isCancelled = true
                 else -> event.isDropItems = false
             }
