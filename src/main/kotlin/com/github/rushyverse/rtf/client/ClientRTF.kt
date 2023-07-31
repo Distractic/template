@@ -7,10 +7,9 @@ import java.util.*
 
 class ClientRTF(
     val stats: RTFStats = RTFStats(),
-    pluginId: String,
     uuid: UUID,
     scope: CoroutineScope
-) : Client(pluginId, uuid, scope) {
+) : Client(uuid, scope) {
 
     /**
      * Gives instantly a reward to the client.

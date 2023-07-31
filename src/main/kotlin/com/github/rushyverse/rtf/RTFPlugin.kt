@@ -87,7 +87,7 @@ class RTFPlugin(
     private fun createYamlReader(): IFileReader {
         val yaml = Yaml(
             serializersModule = SerializersModule {
-                contextual(LocationSerializer())
+                contextual(LocationSerializer)
             }
         )
         return YamlFileReader(this, yaml)
@@ -106,7 +106,6 @@ class RTFPlugin(
 
     override fun createClient(player: Player): Client {
         return ClientRTF(
-            pluginId = id,
             uuid = player.uniqueId,
             scope = scope + SupervisorJob(scope.coroutineContext.job)
         )
