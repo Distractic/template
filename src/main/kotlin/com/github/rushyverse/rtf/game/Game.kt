@@ -34,11 +34,17 @@ class Game(
     val players: Collection<Player>
         get() = world.players
 
-    val startingTask = SchedulerTask(plugin.scope, 1.seconds)
+    val gameTask = SchedulerTask(plugin.scope, 1.seconds)
 
     val minPlayers = 2 // to delete, use config instead
 
     val teams: MutableList<TeamRTF>
+
+    val createdTime = System.currentTimeMillis()
+    var startedTime: Long = 0 // value set when the game starts
+
+    private val clients: ClientManager by inject(plugin.id)
+    private val manager: GameManager by inject(plugin.id)
 
     init {
         teams = mutableListOf()
@@ -79,6 +85,10 @@ class Game(
                 }
             }
 
+            startedTime = System.currentTimeMillis()
+
+            gameTask.add("scoreboardUpdate") { gameTimeTask() }
+            gameTask.run()
         } else {
             val time = AtomicInteger(5)
 
@@ -100,6 +110,20 @@ class Game(
         }
         broadcast("game.message.starting", listOf(time))
         atomicTime.set(time - 1)
+    }
+
+    /*
+     * Represents the task during the game.
+     * Update every seconds the scoreboard with the current
+     * formatted time since the game was started.
+     */
+    private suspend fun gameTimeTask() {
+        val time = (System.currentTimeMillis() - startedTime) / 1000
+        val timeFormatted = time.toInt().formatSeconds()
+        for (player in players) {
+            val client = clients.getClient(player) as ClientRTF
+            GameScoreboard.update(client, this, timeFormatted)
+        }
     }
 
     fun getClientTeam(client: ClientRTF): TeamRTF? {
@@ -134,7 +158,8 @@ class Game(
         player.inventory.clear()
         player.teleport(world.spawnLocation)
 
-
+        if (startedTime == 0L) // Avoid over-using
+            GameScoreboard.update(client, this)
 
         data.players = players.size
 
@@ -158,15 +183,8 @@ class Game(
 
         broadcast("player.join.team", listOf(player.name, joinedTeam.type.name))
 
-        client.fastBoard.updateLines(
-            "",
-            "§FYour team: ${joinedTeam.type.name}",
-            "    §6Flag: §Aplaced",
-            "",
-            "Other team: 0",
-            "",
-            "rushy.space"
-        )
+        if (startedTime == 0L)
+            GameScoreboard.update(client, this)
     }
 
     suspend fun clientLeave(client: ClientRTF) {
