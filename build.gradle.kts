@@ -2,12 +2,13 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 import org.gradle.kotlin.dsl.`kotlin-dsl`
 
 plugins {
-    kotlin("jvm") version "1.8.22"
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    embeddedKotlin("jvm")
+    embeddedKotlin("plugin.serialization")
+    id("com.github.johnrengelman.shadow") version "8.1.1"
     `java-library`
 }
 
-group = "github.rudashyverse"
+group = "com.github.rushyverse"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -18,20 +19,26 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
-val paperVersion: String by project
-
 dependencies {
+    val paperVersion = "1.19-R0.1-SNAPSHOT"
+    val rushyApiVersion = "1.0.0"
+    val commandApiVersion = "9.0.3"
+
     compileOnly(kotlin("stdlib"))
 
     compileOnly("io.papermc.paper:paper-api:$paperVersion")
 
-    compileOnly("io.github.distractic:bukkit-api:1.0.0")
+    compileOnly("com.github.Rushyverse:api:$rushyApiVersion")
+
+    // CommandAPI framework
+    compileOnly("dev.jorel:commandapi-bukkit-core:$commandApiVersion")
+    compileOnly("dev.jorel:commandapi-bukkit-kotlin:$commandApiVersion")
 
     testImplementation(kotlin("test"))
 }
 
 tasks {
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    withType<KotlinCompile> {
         kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
@@ -41,6 +48,5 @@ tasks {
 
     shadowJar {
         archiveClassifier.set("")
-
     }
 }
