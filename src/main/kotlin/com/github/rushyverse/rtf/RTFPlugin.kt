@@ -11,11 +11,13 @@ import com.github.rushyverse.api.koin.loadModule
 import com.github.rushyverse.api.listener.PlayerListener
 import com.github.rushyverse.api.player.Client
 import com.github.rushyverse.api.player.ClientManager
+import com.github.rushyverse.api.serializer.LocationSerializer
 import com.github.rushyverse.api.translation.ResourceBundleTranslationProvider
 import com.github.rushyverse.api.translation.TranslationProvider
 import com.github.rushyverse.api.translation.registerResourceBundleForSupportedLocales
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.commands.RTFCommand
+import com.github.rushyverse.rtf.config.MapConfig
 import com.github.rushyverse.rtf.config.RTFConfig
 import com.github.rushyverse.rtf.game.GameManager
 import com.github.rushyverse.rtf.listener.AuthenticationListener
@@ -27,6 +29,8 @@ import dev.jorel.commandapi.CommandAPIBukkitConfig
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
 import kotlinx.coroutines.plus
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import org.bukkit.World
 import org.bukkit.entity.Player
 import java.io.File
@@ -46,6 +50,7 @@ class RTFPlugin(
 
 
     lateinit var config : RTFConfig private set
+    lateinit var configMaps : List<MapConfig> private set
 
     lateinit var mapsDir: File private set
 
@@ -55,11 +60,12 @@ class RTFPlugin(
         super.onEnableAsync()
         modulePlugin<RTFPlugin>()
 
-
         val configReader = createYamlReader()
         config = configReader.readConfigurationFile<RTFConfig>("config.yml")
+        configMaps = configReader.readConfigurationFile<List<MapConfig>>("maps.yml")
 
         logger.info("Configuration Summary: $config")
+        logger.info("Configuration Maps: $configMaps")
 
         mapsDir = File(dataFolder, "maps").apply { mkdirs() }
         tempDir = setupTempDir()
@@ -82,7 +88,11 @@ class RTFPlugin(
      * @return The instance of the yaml reader.
      */
     private fun createYamlReader(): IFileReader {
-        val yaml = Yaml.default
+        val yaml = Yaml(
+            serializersModule = SerializersModule {
+                contextual(LocationSerializer())
+            }
+        )
         return YamlFileReader(this, yaml)
     }
 

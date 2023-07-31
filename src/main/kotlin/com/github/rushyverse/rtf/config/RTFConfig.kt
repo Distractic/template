@@ -11,9 +11,7 @@ data class RTFConfig(
     val gameServer: Boolean, // TODO: not implemented
     val dataProvider: DataProviderConfig,
     val game: GameConfig,
-    val rewards: RewardsConfig,
-    @Serializable(with = MapConfigListSerializer::class)
-    val maps: List<MapConfig>
+    val rewards: RewardsConfig
 )
 
 @Suppress("PROVIDED_RUNTIME_TOO_LOW")

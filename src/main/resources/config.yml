@@ -1,26 +1,33 @@
-# Is the server dedicated exclusively to this game?
-# If so, the server will automatically connect in game on join.
-# Not implemented / Planning stage
 gameServer: false
 
-# Share game data with others services in the network.
 dataProvider:
-  # Uses the API memory to share data with others API-dependant-plugins on the same server.
   apiSharedMemory: true
 
 game:
   maxGames: 10
   minPlayers: 4
   maxPlayers: 10
-  backToHubCommand: hub
+  backToHubCommand: "hub"
 
-# Define the rewards [ XP, COINS ]
 rewards:
-  vipMultiplier: 2
-  assist: 0
-  kill: 0
-  win: 0
-  lose: 0
-
-maps:
-  - map-classic.yml
+  vipMultiplier:
+    xp: 1
+    coins: 1
+  kill:
+    xp: 1
+    coins: 1
+  assist:
+    xp: 1
+    coins: 1
+  flagPickUp:
+    xp: 1
+    coins: 1
+  flagPlace:
+    xp: 1
+    coins: 1
+  win:
+    xp: 1
+    coins: 1
+  lose:
+    xp: 1
+    coins: 1
