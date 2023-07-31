@@ -1,33 +1,36 @@
-package com.github.rushyverse.rtf.manager
+package com.github.rushyverse.rtf.game
 
-import com.github.rushyverse.rtf.RTF
-import com.github.rushyverse.rtf.RTF.Companion.translationsProvider
-import com.github.rushyverse.rtf.TeamRTF
+import com.github.rushyverse.api.extension.BukkitRunnable
+import com.github.rushyverse.api.game.GameData
+import com.github.rushyverse.api.game.GameState
+import com.github.rushyverse.api.koin.inject
+import com.github.rushyverse.api.player.ClientManager
+import com.github.rushyverse.api.schedule.SchedulerTask
+import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.config.MapConfig
 import com.github.rushyverse.rtf.config.RTFConfig
+import com.github.rushyverse.rtf.ext.formatSeconds
+import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
-import com.github.rushyverse.api.extension.toPos
-import com.github.rushyverse.api.game.GameData
-import com.github.rushyverse.api.game.GameState
-import com.github.rushyverse.api.schedule.SchedulerTask
 import net.kyori.adventure.text.Component.text
-import org.bukkit.GameMode
-import org.bukkit.Location
-import org.bukkit.Material
-import org.bukkit.World
+import org.bukkit.*
+import org.bukkit.entity.Firework
 import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
+import org.bukkit.potion.PotionEffect
+import org.bukkit.potion.PotionEffectType
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.random.Random
+import kotlin.random.Random.Default.nextBoolean
+import kotlin.random.Random.Default.nextInt
 import kotlin.time.Duration.Companion.seconds
 
 class Game(
-    val plugin: RTF,
+    val plugin: RTFPlugin,
     val id: Int,
     val world: World,
     val config: RTFConfig,
-    val mapConfig : MapConfig
+    val mapConfig: MapConfig
 ) {
     val data = GameData("rtf", id)
 
@@ -56,7 +59,7 @@ class Game(
 
     fun state(): GameState = data.state
 
-    private fun sendBasicKit(player: Player) {
+    fun sendBasicKit(player: Player) {
         val inv = player.inventory
 
         inv.helmet = ItemStack(Material.LEATHER_HELMET)
@@ -94,18 +97,18 @@ class Game(
 
             data.state = GameState.STARTING
 
-            startingTask.add { startingTask(this, time) }
-            startingTask.run()
+            gameTask.add { startingTask(this, time) }
+            gameTask.run()
         }
 
-        plugin.saveUpdate(data)
+        manager.sharedGameData.saveUpdate(data)
     }
 
     private suspend fun startingTask(task: SchedulerTask.Task, atomicTime: AtomicInteger) {
         val time = atomicTime.get()
         if (time == 0) {
-            start(true)
             task.remove() // end the repeating task
+            start(true)
             return
         }
         broadcast("game.message.starting", listOf(time))
@@ -133,27 +136,6 @@ class Game(
     suspend fun clientSpectate(client: ClientRTF) {
         val player = client.requirePlayer()
 
-        client.fastBoard.apply {
-            updateTitle("§B§LRTF #${data.id}")
-
-            val teamsList = mutableListOf<String>()
-            for (team in teams){
-                val teamName = team.type.name(translationsProvider, client.locale)
-                val state = team.flagStolenState
-                teamsList.add(teamName)
-            }
-
-            updateLines(
-                "",
-                "§D§L§DSPECTATE MODE",
-                "Use §E/rtf join",
-                "",
-                *teamsList.toTypedArray(),
-                "",
-                "rushy.space"
-            )
-        }
-
         player.gameMode = GameMode.SPECTATOR
         player.inventory.clear()
         player.teleport(world.spawnLocation)
@@ -162,15 +144,14 @@ class Game(
             GameScoreboard.update(client, this)
 
         data.players = players.size
-
-        plugin.saveUpdate(data)
+        manager.sharedGameData.saveUpdate(data)
     }
 
     private fun findJoinTeam(): TeamRTF {
         val minPlayers = teams.minOf { it.members.size }
         val smallestTeams = teams.filter { it.members.size == minPlayers }
 
-        return smallestTeams[Random.nextInt(smallestTeams.size)]
+        return smallestTeams[nextInt(smallestTeams.size)]
     }
 
     suspend fun clientJoin(client: ClientRTF) {
@@ -190,6 +171,7 @@ class Game(
     suspend fun clientLeave(client: ClientRTF) {
         val playersSize = players.size
         val team = teams.firstOrNull { it.members.contains(client) }
+
         team?.members?.remove(client)
 
         data.players = playersSize
@@ -199,17 +181,15 @@ class Game(
 
             when (data.state) {
                 GameState.STARTING -> {
-                    startingTask.tasks[0].remove()
+                    gameTask.tasks[0].remove()
 
                     broadcast("game.message.client.leave.starting")
                     data.state = GameState.WAITING
                 }
 
                 GameState.STARTED -> {
-                    teams.forEach {
-                        if (it.members.isEmpty()) {
-                            end(GameEndCause.TEAM_EMPTY)
-                        }
+                    if (teams.any { it.members.isEmpty() }) {
+                        end(null)
                     }
                 }
 
@@ -218,7 +198,7 @@ class Game(
 
         }
 
-        plugin.saveUpdate(data)
+        manager.sharedGameData.saveUpdate(data)
     }
 
     suspend fun clientPickupFlag(client: ClientRTF, flagTeam: TeamRTF) {
@@ -257,6 +237,7 @@ class Game(
 
     suspend fun clientPlaceFlag(client: ClientRTF, flagTeam: TeamRTF) {
         val player = client.requirePlayer()
+        val team = getClientTeam(client) ?: return
 
         client.stats.flagPlaces += 1
         flagTeam.flagStolenState = false
@@ -324,18 +305,13 @@ class Game(
     suspend fun broadcast(key: String, args: List<Any> = emptyList()) = plugin.broadcast(world, key, args)
 
     fun isProtectedLocation(location: Location): Boolean {
-        val pos = location.toPos()
-        for (team in teams){
-            if (team.spawnCuboid.contains(pos) || team.flagCuboid.contains(pos)){
-                return true
-            }
-        }
-        return false
+        return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }
     }
 
     fun isBlockAllowed(blockType: Material): Boolean {
         return mapConfig.allowedBlocks.contains(blockType)
     }
+}
 
 private fun Location.spawnRandomFirework() {
     val effect = FireworkEffect.builder()
