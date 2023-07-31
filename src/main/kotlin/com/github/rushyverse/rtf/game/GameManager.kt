@@ -1,8 +1,8 @@
-package com.github.rushyverse.rtf.manager
+package com.github.rushyverse.rtf.game
 
-import com.github.rushyverse.rtf.RTF
-import com.github.rushyverse.api.SharedMemory
 import com.github.rushyverse.api.game.SharedGameData
+import com.github.rushyverse.api.koin.inject
+import com.github.rushyverse.rtf.RTFPlugin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bukkit.Bukkit
@@ -34,10 +34,9 @@ class GameManager(
     suspend fun createAndSave(gameIndex: Int = findNewGameIndex()): Game {
         val worldName = "rtf$gameIndex"
         var world = plugin.server.getWorld(worldName)
-
         if (world == null) {
             world = createWorldFromTemplate(worldName)
-            return Game(plugin, gameIndex, world, plugin.config, plugin.config.maps[0]).also {
+            return Game(plugin, gameIndex, world, plugin.config, plugin.configMaps[0]).also {
                 games.add(it)
 
                 sharedGameData.saveUpdate(it.data)
