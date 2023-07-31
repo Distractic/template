@@ -283,19 +283,41 @@ class Game(
      * Ends this game.
      * The game state is set to ENDING while players are teleported and the world is destroyed.
      */
-    fun end(cause: GameEndCause) {
+    suspend fun end(winTeam: TeamRTF?) {
         data.state = GameState.ENDING
+        gameTask.cancelAndJoin()
+        manager.sharedGameData.saveUpdate(data)
 
-        teams.forEach { it.members.clear() }
+        if (winTeam == null) {
+            broadcast("game.end.other")
+            ejectPlayersAndDestroy()
+        } else {
+            broadcast("game.end.win", listOf(winTeam.type.name))
+            giveWinRewards(winTeam)
 
+            val taskFireworks = BukkitRunnable {
+                winTeam.members.forEach {
+                    it.player?.location?.spawnRandomFirework()
+                }
+            }.runTaskTimer(plugin, 0, 15L)
+
+            // Ending the previous task, eject the players and destroy the game after 10s
+            BukkitRunnable {
+                taskFireworks.cancel()
+                ejectPlayersAndDestroy()
+            }.runTaskLater(plugin, 200L)
+        }
+    }
+
+    private fun ejectPlayersAndDestroy() {
         for (player in players) {
             player.performCommand(config.game.backToHubCommand)
         }
 
         BukkitRunnable {
-           plugin.launch {
-               plugin.gameManager.removeGameAndDeleteWorld(this@Game)
-           }
+            plugin.launch {
+                manager.removeGameAndDeleteWorld(this@Game)
+            }
         }.runTaskLater(plugin, 40L)
     }
 
