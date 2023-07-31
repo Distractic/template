@@ -8,7 +8,6 @@ import com.github.rushyverse.api.configuration.reader.readConfigurationFile
 import com.github.rushyverse.api.extension.registerListener
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.koin.loadModule
-import com.github.rushyverse.api.listener.PlayerListener
 import com.github.rushyverse.api.player.Client
 import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.serializer.LocationSerializer
@@ -24,8 +23,6 @@ import com.github.rushyverse.rtf.listener.AuthenticationListener
 import com.github.rushyverse.rtf.listener.GameListener
 import com.github.rushyverse.rtf.listener.UndesirableEventListener
 import com.github.shynixn.mccoroutine.bukkit.scope
-import dev.jorel.commandapi.CommandAPI
-import dev.jorel.commandapi.CommandAPIBukkitConfig
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
 import kotlinx.coroutines.plus
