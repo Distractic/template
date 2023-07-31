@@ -5,3 +5,4 @@ api-version: 1.19
 main: com.github.rushyverse.rtf.RTFPlugin
 depend:
   - paper-api
+  - CommandAPI
