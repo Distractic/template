@@ -12,10 +12,11 @@ import org.bukkit.WorldType
 import java.io.File
 import kotlin.coroutines.CoroutineContext
 
-class GameManager(val plugin: RTF) {
+class GameManager(
+    private val plugin: RTFPlugin
+) {
 
-    val sharedGameData = SharedMemory.games
-
+    val sharedGameData: SharedGameData by inject<SharedGameData>()
     val games: MutableList<Game> = mutableListOf()
 
     fun getByWorld(world: World): Game? {
