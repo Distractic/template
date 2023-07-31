@@ -337,5 +337,19 @@ class Game(
         return mapConfig.allowedBlocks.contains(blockType)
     }
 
+private fun Location.spawnRandomFirework() {
+    val effect = FireworkEffect.builder()
+        .with(FireworkEffect.Type.entries.toTypedArray().random())
+        .withColor(Color.fromRGB(nextInt(256), nextInt(256), nextInt(256)))
+        .withFade(Color.fromRGB(nextInt(256), nextInt(256), nextInt(256)))
+        .flicker(nextBoolean())
+        .trail(nextBoolean())
+        .build()
 
+    val firework = this.world.spawn(this, Firework::class.java)
+    val fireworkMeta = firework.fireworkMeta.apply {
+        addEffect(effect)
+        power = nextInt(1, 3)
+    }
+    firework.fireworkMeta = fireworkMeta
 }
