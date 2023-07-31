@@ -210,6 +210,31 @@ class Game(
         client.stats.flagAttempts += 1
 
         broadcast("player.pickup.flag", listOf(player.name, flagTeam.type.name))
+        client.reward(config.rewards.flagPickUp)
+
+        player.addPotionEffect(
+            PotionEffect(PotionEffectType.SPEED, 6000, 1)
+        )
+
+        val woolItem = ItemStack(flagTeam.flagMaterial)
+        player.inventory.apply {
+            clear()
+            repeat(size) {
+                setItem(it, woolItem)
+            }
+        }
+
+        client.send("you.have.flag")
+    }
+
+    fun clientDeathWithFlag(client: ClientRTF, flagTeam: TeamRTF) {
+        client.requirePlayer().apply {
+            inventory.clear()
+            sendBasicKit(this)
+            removePotionEffect(PotionEffectType.SPEED)
+        }
+
+        flagTeam.flagStolenState = false
     }
 
     suspend fun clientPlaceFlag(client: ClientRTF, flagTeam: TeamRTF) {
