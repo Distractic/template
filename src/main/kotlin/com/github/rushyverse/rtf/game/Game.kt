@@ -262,6 +262,21 @@ class Game(
         flagTeam.flagStolenState = false
 
         broadcast("player.place.flag", listOf(player.name, flagTeam.type.name))
+        client.reward(config.rewards.flagPlace)
+
+        end(team)
+    }
+
+    fun giveWinRewards(winTeam: TeamRTF) {
+        teams.forEach { team ->
+            val winner = team == winTeam
+            team.members.forEach { member ->
+                member.reward(
+                    if (winner) config.rewards.win
+                    else config.rewards.lose
+                )
+            }
+        }
     }
 
     /**
