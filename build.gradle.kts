@@ -37,9 +37,33 @@ dependencies {
     testImplementation(kotlin("test"))
 }
 
+val javaVersion get() = JavaVersion.VERSION_17
+val javaVersionString get() = javaVersion.toString()
+val javaVersionInt get() = javaVersionString.toInt()
+
+kotlin {
+    jvmToolchain(javaVersionInt)
+
+    sourceSets {
+        all {
+            languageSettings {
+                optIn("kotlin.RequiresOptIn")
+                optIn("kotlin.ExperimentalStdlibApi")
+                optIn("kotlin.contracts.ExperimentalContracts")
+                optIn("kotlinx.coroutines.ExperimentalCoroutinesApi")
+            }
+        }
+    }
+}
+
 tasks {
     withType<KotlinCompile> {
-        kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
+        kotlinOptions.jvmTarget = javaVersionString
+    }
+
+    withType<JavaCompile> {
+        sourceCompatibility = javaVersionString
+        targetCompatibility = javaVersionString
     }
 
     test {
