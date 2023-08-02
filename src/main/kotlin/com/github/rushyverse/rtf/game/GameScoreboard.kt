@@ -6,9 +6,14 @@ import com.github.rushyverse.api.game.team.TeamType
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.RTFPlugin.Companion.BUNDLE_RTF
 import com.github.rushyverse.rtf.client.ClientRTF
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.Component.text
 import java.util.*
 
 object GameScoreboard {
+
+    private val emptyLine = text("")
+    private val serverIpAddress = text("play.rushy.space")
 
     suspend fun update(
         client: ClientRTF,
@@ -16,43 +21,43 @@ object GameScoreboard {
         timeFormatted: String = ""
     ) {
         val locale = client.lang.locale
-        val lines = mutableListOf<String>()
+        val lines = mutableListOf<Component>()
         val team = game.getClientTeam(client)
         val state = game.state()
         val stats = client.stats
 
-        lines.add("")
-        lines.add(translateStateLine(state, timeFormatted, locale))
-        lines.add("")
+        lines.add(emptyLine)
+        lines.add(text(translateStateLine(state, timeFormatted, locale)))
+        lines.add(emptyLine)
 
         if (state == GameState.STARTED) {
 
             game.teams
                 .forEach {
-                    lines.add(translateTeamFlagLine(it, locale))
+                    lines.add(text(translateTeamFlagLine(it, locale)))
                 }
 
-            lines.add("")
+            lines.add(emptyLine)
         }
 
         if (team != null) {
-            lines.add(translatePlayerTeamLine(locale, team.type))
+            lines.add(text(translatePlayerTeamLine(locale, team.type)))
 
             if (state == GameState.STARTED) {
-                lines.add(translatePlayerKillsLine(locale, stats.kills()))
-                lines.add(translatePlayerDeathsLine(locale, stats.deaths()))
-                lines.add(translatePlayerAttemptsLine(locale, stats.flagAttempts))
+                lines.add(text(translatePlayerKillsLine(locale, stats.kills())))
+                lines.add(text(translatePlayerDeathsLine(locale, stats.deaths())))
+                lines.add(text(translatePlayerAttemptsLine(locale, stats.flagAttempts)))
             }
         } else {
-            lines.add(translateSpectateLine(locale))
-            lines.add(translateJoinUsage(locale, "§E/rtf join"))
+            lines.add(text(translateSpectateLine(locale)))
+            lines.add(text(translateJoinUsage(locale, "§E/rtf join")))
         }
 
-        lines.add("")
-        lines.add("play.rushy.space")
+        lines.add(emptyLine)
+        lines.add(serverIpAddress)
 
         client.scoreboard().apply {
-            updateTitle("§BRTF #§L${game.id}")
+            updateTitle(text("§BRTF #§L${game.id}"))
             updateLines(lines)
         }
     }
