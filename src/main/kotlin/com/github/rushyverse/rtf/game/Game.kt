@@ -111,7 +111,7 @@ class Game(
             start(true)
             return
         }
-        broadcast("game.message.starting", listOf(time))
+        broadcast("game.message.starting", time)
         atomicTime.set(time - 1)
     }
 
@@ -162,7 +162,7 @@ class Game(
             it.members.add(client)
         }
 
-        broadcast("player.join.team", listOf(player.name, joinedTeam.type.name))
+        broadcast("player.join.team", player.name, joinedTeam.type.name)
 
         if (startedTime == 0L)
             GameScoreboard.update(client, this)
@@ -207,7 +207,7 @@ class Game(
         flagTeam.flagStolenState = true
         client.stats.flagAttempts += 1
 
-        broadcast("player.pickup.flag", listOf(player.name, flagTeam.type.name))
+        broadcast("player.pickup.flag", player.name, flagTeam.type.name)
         client.reward(config.rewards.flagPickUp)
 
         player.addPotionEffect(
@@ -242,7 +242,7 @@ class Game(
         client.stats.flagPlaces += 1
         flagTeam.flagStolenState = false
 
-        broadcast("player.place.flag", listOf(player.name, flagTeam.type.name))
+        broadcast("player.place.flag", player.name, flagTeam.type.name)
         client.reward(config.rewards.flagPlace)
 
         end(team)
@@ -273,7 +273,7 @@ class Game(
             broadcast("game.end.other")
             ejectPlayersAndDestroy()
         } else {
-            broadcast("game.end.win", listOf(winTeam.type.name))
+            broadcast("game.end.win", winTeam.type.name)
             giveWinRewards(winTeam)
 
             val taskFireworks = BukkitRunnable {
@@ -302,7 +302,7 @@ class Game(
         }.runTaskLater(plugin, 40L)
     }
 
-    suspend fun broadcast(key: String, args: List<Any> = emptyList()) = plugin.broadcast(world, key, args)
+    suspend fun broadcast(key: String, vararg args: Any) = plugin.broadcast(world, key, *args)
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }
