@@ -1,6 +1,7 @@
 package com.github.rushyverse.rtf.game
 
 import com.github.rushyverse.api.APIPlugin.Companion.BUNDLE_API
+import com.github.rushyverse.api.extension.toComponent
 import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.game.team.TeamType
 import com.github.rushyverse.rtf.RTFPlugin
@@ -8,11 +9,13 @@ import com.github.rushyverse.rtf.RTFPlugin.Companion.BUNDLE_RTF
 import com.github.rushyverse.rtf.client.ClientRTF
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver
 import java.util.*
 
 object GameScoreboard {
 
-    private val emptyLine = text("")
+    private val emptyLine = Component.empty()
     private val serverIpAddress = text("play.rushy.space")
 
     suspend fun update(
@@ -41,7 +44,7 @@ object GameScoreboard {
         }
 
         if (team != null) {
-            lines.add(text(translatePlayerTeamLine(locale, team.type)))
+            lines.add(translateTeamLine(locale, team.type))
 
             if (state == GameState.STARTED) {
                 lines.add(text(translatePlayerKillsLine(locale, stats.kills())))
@@ -49,7 +52,7 @@ object GameScoreboard {
                 lines.add(text(translatePlayerAttemptsLine(locale, stats.flagAttempts)))
             }
         } else {
-            lines.add(text(translateSpectateLine(locale)))
+            lines.add(translateSpectateLine(locale))
             lines.add(text(translateJoinUsage(locale, "§E/rtf join")))
         }
 
@@ -87,10 +90,14 @@ object GameScoreboard {
         return RTFPlugin.translationProvider.translate("scoreboard.attempts", locale, BUNDLE_RTF,  arrayOf(attempts))
     }
 
-    private fun translatePlayerTeamLine(locale: Locale, type: TeamType): String {
-        val teamNameTranslate =
-            RTFPlugin.translationProvider.translate("team.${type.name.lowercase()}", locale, BUNDLE_API)
-        return RTFPlugin.translationProvider.translate("scoreboard.team", locale, BUNDLE_RTF, teamNameTranslate)
+    private fun translateTeamLine(locale: Locale, type: TeamType): Component {
+        val translatedName = type.name(RTFPlugin.translationProvider, locale)
+        val color = type.name.lowercase()
+        val line = RTFPlugin.translationProvider.translate("scoreboard.team", locale, BUNDLE_RTF,
+            arrayOf("<$color>$translatedName</$color>")
+        )
+        println(line)
+        return line.toComponent(TagResolver.standard())
     }
 
     private fun translateStateLine(state: GameState, timeFormatted: String, locale: Locale): String {
@@ -108,8 +115,10 @@ object GameScoreboard {
         )
     }
 
-    private fun translateSpectateLine(locale: Locale) =
-        RTFPlugin.translationProvider.translate("scoreboard.spectate.mode", locale, BUNDLE_RTF)
+    private fun translateSpectateLine(locale: Locale) = text(
+        RTFPlugin.translationProvider.translate("scoreboard.spectate.mode", locale, BUNDLE_RTF),
+        NamedTextColor.LIGHT_PURPLE
+    )
 
     private fun translateJoinUsage(locale: Locale, joinCommand: String) =
         RTFPlugin.translationProvider.translate("scoreboard.spectate.join.usage", locale, BUNDLE_RTF,  arrayOf(joinCommand))
