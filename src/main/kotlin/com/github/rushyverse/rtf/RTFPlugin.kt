@@ -117,7 +117,7 @@ class RTFPlugin(
         }
     }
 
-    suspend fun broadcast(world: World, key: String, vararg args: Any) {
+    suspend fun broadcast(world: World, key: String, args: Array<Any>) {
         val clients: ClientManager by inject(id)
 
         val clientsByLang = world.players.groupBy {
@@ -125,7 +125,7 @@ class RTFPlugin(
         }
 
         for ((lang, players) in clientsByLang) {
-            val translatedMsg = translationProvider.translate(key, lang, BUNDLE_RTF, *args)
+            val translatedMsg = translationProvider.translate(key, lang, BUNDLE_RTF, args)
 
             players.forEach { player ->
                 val client = clients.getClient(player)

@@ -73,18 +73,18 @@ object GameScoreboard {
     }
 
     private fun translateStartedStateLine(locale: Locale, timeFormatted: String) =
-        RTFPlugin.translationProvider.translate("scoreboard.started", locale, BUNDLE_RTF, timeFormatted)
+        RTFPlugin.translationProvider.translate("scoreboard.started", locale, BUNDLE_RTF,  arrayOf(timeFormatted))
 
     private fun translatePlayerKillsLine(locale: Locale, kills: Int): String {
-        return RTFPlugin.translationProvider.translate("scoreboard.kills", locale, BUNDLE_RTF, kills)
+        return RTFPlugin.translationProvider.translate("scoreboard.kills", locale, BUNDLE_RTF,  arrayOf(kills))
     }
 
     private fun translatePlayerDeathsLine(locale: Locale, deaths: Int): String {
-        return RTFPlugin.translationProvider.translate("scoreboard.deaths", locale, BUNDLE_RTF, deaths)
+        return RTFPlugin.translationProvider.translate("scoreboard.deaths", locale, BUNDLE_RTF,  arrayOf(deaths))
     }
 
     private fun translatePlayerAttemptsLine(locale: Locale, attempts: Int): String {
-        return RTFPlugin.translationProvider.translate("scoreboard.attempts", locale, BUNDLE_RTF, attempts)
+        return RTFPlugin.translationProvider.translate("scoreboard.attempts", locale, BUNDLE_RTF,  arrayOf(attempts))
     }
 
     private fun translatePlayerTeamLine(locale: Locale, type: TeamType): String {
@@ -97,12 +97,14 @@ object GameScoreboard {
         val currentState = state.name.lowercase()
         return RTFPlugin.translationProvider.translate(
             "scoreboard.$currentState", locale, BUNDLE_RTF,
-            when (currentState) {
-                "starting" -> timeFormatted
-                "started" -> timeFormatted
-                "ending" -> timeFormatted
-                else -> ""
-            }
+            arrayOf(
+                when (currentState) {
+                    "starting" -> timeFormatted
+                    "started" -> timeFormatted
+                    "ending" -> timeFormatted
+                    else -> ""
+                }
+            )
         )
     }
 
@@ -110,5 +112,5 @@ object GameScoreboard {
         RTFPlugin.translationProvider.translate("scoreboard.spectate.mode", locale, BUNDLE_RTF)
 
     private fun translateJoinUsage(locale: Locale, joinCommand: String) =
-        RTFPlugin.translationProvider.translate("scoreboard.spectate.join.usage", locale, BUNDLE_RTF, joinCommand)
+        RTFPlugin.translationProvider.translate("scoreboard.spectate.join.usage", locale, BUNDLE_RTF,  arrayOf(joinCommand))
 }
