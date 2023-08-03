@@ -67,7 +67,7 @@ class RTFPlugin(
         mapsDir = File(dataFolder, "maps").apply { mkdirs() }
         tempDir = setupTempDir()
 
-        translationsProvider = createTranslationProvider()
+        translationProvider = createTranslationProvider()
 
         loadModule(id) {
             single { GameManager(this@RTFPlugin) }
