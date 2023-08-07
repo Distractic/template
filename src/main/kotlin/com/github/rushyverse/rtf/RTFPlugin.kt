@@ -5,6 +5,7 @@ import com.github.rushyverse.api.Plugin
 import com.github.rushyverse.api.configuration.reader.IFileReader
 import com.github.rushyverse.api.configuration.reader.YamlFileReader
 import com.github.rushyverse.api.configuration.reader.readConfigurationFile
+import com.github.rushyverse.api.extension.asComponent
 import com.github.rushyverse.api.extension.registerListener
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.koin.loadModule
@@ -23,8 +24,7 @@ import com.github.shynixn.mccoroutine.bukkit.scope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
 import kotlinx.coroutines.plus
-import kotlinx.serialization.modules.SerializersModule
-import kotlinx.serialization.modules.contextual
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.World
 import org.bukkit.entity.Player
 import java.io.File
@@ -51,6 +51,8 @@ class RTFPlugin(
     lateinit var tempDir: File private set
 
     lateinit var kitsGui: KitsGUI private set
+
+    private val clientManager: ClientManager by inject(id)
 
     override suspend fun onEnableAsync() {
         super.onEnableAsync()
@@ -110,18 +112,31 @@ class RTFPlugin(
             registerResourceBundleForSupportedLocales(BUNDLE_RTF, ResourceBundle::getBundle)
         }
 
-    suspend fun broadcast(world: World, key: String, args: Array<Any>) {
-        val clients: ClientManager by inject(id)
-
-        val clientsByLang = world.players.groupBy {
-            clients.getClient(it).lang.locale
-        }
+    /**
+     * Broadcasts a localized message to all players in the specified world.
+     *
+     * This function groups players by their language preferences, translates the message once per language,
+     * and then sends the appropriate localized message to each player.
+     *
+     * @param world The world where the players to receive the message are located.
+     * @param key The key used to look up the translation in the resource bundle.
+     * @param color The color in which the message should be displayed (default is white).
+     * @param args The arguments to format the translated string if it has placeholders.
+     */
+    suspend fun broadcast(
+        world: World,
+        key: String,
+        color: NamedTextColor = NamedTextColor.WHITE,
+        args: Array<Any>
+    ) {
+        val clientsByLang = world.players.groupBy { clientManager.getClient(it).lang.locale }
 
         for ((lang, players) in clientsByLang) {
-            val translatedMsg = translationProvider.translate(key, lang, BUNDLE_RTF, args)
+            val translatedMsg = translator.translate(key, lang, BUNDLE_RTF, args)
+                .asComponent().color(color)
 
             players.forEach { player ->
-                val client = clients.getClient(player)
+                val client = clientManager.getClient(player)
                 client.send(translatedMsg)
             }
         }
