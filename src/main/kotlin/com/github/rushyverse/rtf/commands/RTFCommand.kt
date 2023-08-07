@@ -62,6 +62,7 @@ class RTFCommand(
             }
 
             subcommand("start"){
+                withPermission("rtf.command.start")
                 playerExecutor { player, _ ->
                     val game = games.getByWorld(player.world) ?: return@playerExecutor
 
