@@ -10,9 +10,8 @@ import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.koin.loadModule
 import com.github.rushyverse.api.player.Client
 import com.github.rushyverse.api.player.ClientManager
-import com.github.rushyverse.api.serializer.LocationSerializer
-import com.github.rushyverse.api.translation.ResourceBundleTranslationProvider
-import com.github.rushyverse.api.translation.TranslationProvider
+import com.github.rushyverse.api.translation.ResourceBundleTranslator
+import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.api.translation.registerResourceBundleForSupportedLocales
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.commands.RTFCommand
@@ -39,8 +38,7 @@ class RTFPlugin(
         const val BUNDLE_RTF = "rtf_translate"
         const val ID = "RTF"
 
-        lateinit var translationProvider: TranslationProvider
-            private set
+        lateinit var translator: Translator private set
     }
 
 
@@ -63,7 +61,7 @@ class RTFPlugin(
         mapsDir = File(dataFolder, "maps").apply { mkdirs() }
         tempDir = setupTempDir()
 
-        translationProvider = createTranslationProvider()
+        translator = createTranslator()
 
         loadModule(id) {
             single { GameManager(this@RTFPlugin) }
@@ -107,11 +105,10 @@ class RTFPlugin(
         )
     }
 
-    override suspend fun createTranslationProvider(): ResourceBundleTranslationProvider {
-        return (super.createTranslationProvider()).apply {
+    override suspend fun createTranslator(): ResourceBundleTranslator =
+        super.createTranslator().apply {
             registerResourceBundleForSupportedLocales(BUNDLE_RTF, ResourceBundle::getBundle)
         }
-    }
 
     suspend fun broadcast(world: World, key: String, args: Array<Any>) {
         val clients: ClientManager by inject(id)
