@@ -16,12 +16,10 @@ import com.github.rushyverse.api.translation.TranslationProvider
 import com.github.rushyverse.api.translation.registerResourceBundleForSupportedLocales
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.commands.RTFCommand
-import com.github.rushyverse.rtf.config.MapConfig
-import com.github.rushyverse.rtf.config.RTFConfig
+import com.github.rushyverse.rtf.config.*
 import com.github.rushyverse.rtf.game.GameManager
-import com.github.rushyverse.rtf.listener.AuthenticationListener
-import com.github.rushyverse.rtf.listener.GameListener
-import com.github.rushyverse.rtf.listener.UndesirableEventListener
+import com.github.rushyverse.rtf.gui.KitsGUI
+import com.github.rushyverse.rtf.listener.*
 import com.github.shynixn.mccoroutine.bukkit.scope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.job
@@ -53,6 +51,8 @@ class RTFPlugin(
     lateinit var mapsDir: File private set
 
     lateinit var tempDir: File private set
+
+    lateinit var kitsGui: KitsGUI private set
 
     override suspend fun onEnableAsync() {
         super.onEnableAsync()
