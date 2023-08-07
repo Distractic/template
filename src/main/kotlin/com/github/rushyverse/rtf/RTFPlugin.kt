@@ -46,8 +46,9 @@ class RTFPlugin(
     }
 
 
-    lateinit var config : RTFConfig private set
-    lateinit var configMaps : List<MapConfig> private set
+    lateinit var config: RTFConfig private set
+    lateinit var configMaps: List<MapConfig> private set
+    lateinit var configKits: KitsConfig private set
 
     lateinit var mapsDir: File private set
 
@@ -57,12 +58,7 @@ class RTFPlugin(
         super.onEnableAsync()
         modulePlugin<RTFPlugin>()
 
-        val configReader = createYamlReader()
-        config = configReader.readConfigurationFile<RTFConfig>("config.yml")
-        configMaps = configReader.readConfigurationFile<List<MapConfig>>("maps.yml")
-
-        logger.info("Configuration Summary: $config")
-        logger.info("Configuration Maps: $configMaps")
+        loadConfiguration()
 
         mapsDir = File(dataFolder, "maps").apply { mkdirs() }
         tempDir = setupTempDir()
@@ -73,24 +69,24 @@ class RTFPlugin(
             single { GameManager(this@RTFPlugin) }
         }
 
+        kitsGui = KitsGUI(configKits)
+
         RTFCommand(this).register()
 
+        registerListener { GUIListener(this, setOf(kitsGui)) }
         registerListener { AuthenticationListener() }
         registerListener { UndesirableEventListener() }
         registerListener { GameListener() }
     }
 
-    /**
-     * Create a new instance of yaml reader.
-     * @return The instance of the yaml reader.
-     */
-    private fun createYamlReader(): IFileReader {
-        val yaml = Yaml(
-            serializersModule = SerializersModule {
-                contextual(LocationSerializer)
-            }
-        )
-        return YamlFileReader(this, yaml)
+    private fun loadConfiguration() {
+        val configReader = createYamlReader()
+        config = configReader.readConfigurationFile<RTFConfig>("config.yml")
+        configMaps = configReader.readConfigurationFile<List<MapConfig>>("maps.yml")
+        configKits = configReader.readConfigurationFile<KitsConfig>("kits.yml")
+
+        logger.info("Configuration Summary: $config")
+        logger.info("Configuration Maps: $configMaps")
     }
 
     private fun setupTempDir() = File(dataFolder, "temp").apply {
