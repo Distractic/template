@@ -1,0 +1,39 @@
+kits:
+  - !<rusher>
+    name: kit.rusher.name
+    description: kit.rusher.description
+    icon:
+      material: IRON_CHESTPLATE
+    armor:
+      helmet:
+        material: IRON_HELMET
+        unbreakable: true
+        enchantments:
+          protection: 1
+      chestplate:
+        material: IRON_CHESTPLATE
+        unbreakable: true
+        enchantments:
+          protection: 1
+      leggings:
+        material: IRON_LEGGINGS
+        unbreakable: true
+        enchantments:
+          protection: 2
+      boots:
+        material: IRON_BOOTS
+        unbreakable: true
+        enchantments:
+          protection: 1
+    items:
+      - !<sword>
+        material: IRON_SWORD
+        unbreakable: true
+      - !<pickaxe>
+        material: IRON_PICKAXE
+        unbreakable: true
+        enchantments:
+          efficiency: 1
+      - !<blocks>
+        material: SMOOTH_SANDSTONE
+        amount: 64
