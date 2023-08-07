@@ -1,9 +1,6 @@
 package com.github.rushyverse.rtf
 
-import com.charleskorn.kaml.Yaml
 import com.github.rushyverse.api.Plugin
-import com.github.rushyverse.api.configuration.reader.IFileReader
-import com.github.rushyverse.api.configuration.reader.YamlFileReader
 import com.github.rushyverse.api.configuration.reader.readConfigurationFile
 import com.github.rushyverse.api.extension.asComponent
 import com.github.rushyverse.api.extension.registerListener
