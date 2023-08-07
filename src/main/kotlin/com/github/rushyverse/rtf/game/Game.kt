@@ -14,6 +14,7 @@ import com.github.rushyverse.rtf.ext.formatSeconds
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.entity.Firework
 import org.bukkit.entity.Player
@@ -41,7 +42,7 @@ class Game(
 
     val minPlayers = 2 // to delete, use config instead
 
-    val teams: MutableList<TeamRTF>
+    val teams: List<TeamRTF> = mapConfig.teams.map { TeamRTF(it, world) }
 
     val createdTime = System.currentTimeMillis()
     var startedTime: Long = 0 // value set when the game starts
@@ -49,13 +50,7 @@ class Game(
     private val clients: ClientManager by inject(plugin.id)
     private val manager: GameManager by inject(plugin.id)
 
-    init {
-        teams = mutableListOf()
-        for (teamConfig in mapConfig.teams) {
-            val team = TeamRTF(teamConfig, world)
-            teams.add(team)
-        }
-    }
+    lateinit var teamWon: TeamRTF private set
 
     fun state(): GameState = data.state
 
@@ -77,7 +72,7 @@ class Game(
         if (force) {
             data.state = GameState.STARTED
 
-            broadcast("game.message.started")
+            broadcast("game.message.started", NamedTextColor.GREEN)
 
             teams.forEach { team ->
                 team.members.forEach { member ->
@@ -111,7 +106,11 @@ class Game(
             start(true)
             return
         }
-        broadcast("game.message.starting", arrayOf(time))
+        broadcast(
+            "game.message.starting",
+            NamedTextColor.GREEN,
+            arrayOf("$time")
+        )
         atomicTime.set(time - 1)
     }
 
@@ -160,12 +159,19 @@ class Game(
             player.teleport(it.spawnPoint)
             player.gameMode = GameMode.SURVIVAL
             it.members.add(client)
-        }
 
-        broadcast("player.join.team", arrayOf(player.name, joinedTeam.type.name))
+            player.displayName(player.displayName().color(it.type.color))
+        }
+        val colorName = joinedTeam.type.name.lowercase()
 
         if (startedTime == 0L)
             GameScoreboard.update(client, this)
+
+        broadcast(
+            "player.join.team",
+            NamedTextColor.GRAY,
+            arrayOf(player.name, "team.$colorName")
+        )
     }
 
     suspend fun clientLeave(client: ClientRTF) {
@@ -176,6 +182,10 @@ class Game(
 
         data.players = playersSize
 
+        client.player?.apply {
+            displayName(displayName().color(NamedTextColor.WHITE))
+        }
+
         // Leave while game is starting and the current number of players is not reached
         if (playersSize < minPlayers) {
 
@@ -183,7 +193,7 @@ class Game(
                 GameState.STARTING -> {
                     gameTask.tasks[0].remove()
 
-                    broadcast("game.message.client.leave.starting")
+                    broadcast("game.message.client.leave.starting", NamedTextColor.RED)
                     data.state = GameState.WAITING
                 }
 
@@ -207,7 +217,11 @@ class Game(
         flagTeam.flagStolenState = true
         client.stats.flagAttempts += 1
 
-        broadcast("player.pickup.flag", arrayOf(player.name, flagTeam.type.name))
+        broadcast(
+            "player.pickup.flag",
+            NamedTextColor.GOLD,
+            arrayOf(player.name, flagTeam.type.name)
+        )
         client.reward(config.rewards.flagPickUp)
 
         player.addPotionEffect(
@@ -242,13 +256,17 @@ class Game(
         client.stats.flagPlaces += 1
         flagTeam.flagStolenState = false
 
-        broadcast("player.place.flag", arrayOf(player.name, flagTeam.type.name))
+        broadcast(
+            "player.place.flag",
+            NamedTextColor.GOLD,
+            arrayOf(player.name, flagTeam.type.name)
+        )
         client.reward(config.rewards.flagPlace)
 
         end(team)
     }
 
-    fun giveWinRewards(winTeam: TeamRTF) {
+    private fun giveWinRewards(winTeam: TeamRTF) {
         teams.forEach { team ->
             val winner = team == winTeam
             team.members.forEach { member ->
@@ -270,10 +288,15 @@ class Game(
         manager.sharedGameData.saveUpdate(data)
 
         if (winTeam == null) {
-            broadcast("game.end.other")
+            broadcast("game.end.other", NamedTextColor.RED)
             ejectPlayersAndDestroy()
         } else {
-            broadcast("game.end.win", arrayOf( winTeam.type.name))
+            this.teamWon = winTeam
+            broadcast(
+                "game.end.win",
+                NamedTextColor.LIGHT_PURPLE,
+                arrayOf(winTeam.type.name)
+            )
             giveWinRewards(winTeam)
 
             val taskFireworks = BukkitRunnable {
@@ -302,7 +325,14 @@ class Game(
         }.runTaskLater(plugin, 40L)
     }
 
-    suspend fun broadcast(key: String, args: Array<Any> = emptyArray()) = plugin.broadcast(world, key, args)
+    /**
+     * Broadcast a translated message using the game world.
+     */
+    suspend fun broadcast(
+        key: String,
+        color: NamedTextColor = NamedTextColor.WHITE,
+        args: Array<Any> = emptyArray()
+    ) = plugin.broadcast(world, key, color, args)
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }
