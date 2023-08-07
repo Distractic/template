@@ -3,8 +3,6 @@ package com.github.rushyverse.rtf.config
 import kotlinx.serialization.Serializable
 import mu.KotlinLogging
 
-val logger = KotlinLogging.logger("RTFConfig")
-
 @Suppress("PROVIDED_RUNTIME_TOO_LOW")
 @Serializable
 data class RTFConfig(
