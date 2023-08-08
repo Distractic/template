@@ -2,6 +2,7 @@ package com.github.rushyverse.rtf.game
 
 import com.github.rushyverse.api.APIPlugin.Companion.BUNDLE_API
 import com.github.rushyverse.api.extension.BukkitRunnable
+import com.github.rushyverse.api.extension.asComponent
 import com.github.rushyverse.api.game.GameData
 import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.koin.inject
@@ -15,6 +16,7 @@ import com.github.rushyverse.rtf.config.RTFConfig
 import com.github.rushyverse.rtf.ext.formatSeconds
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
@@ -47,6 +49,7 @@ class Game(
 
     val createdTime = System.currentTimeMillis()
     var startedTime: Long = 0 // value set when the game starts
+    var endTime: Long = 0 // value set when the game ends
 
     private val clients: ClientManager by inject(plugin.id)
     private val manager: GameManager by inject(plugin.id)
@@ -298,12 +301,9 @@ class Game(
             broadcast("game.end.other", NamedTextColor.RED)
             ejectPlayersAndDestroy()
         } else {
+            this.endTime = System.currentTimeMillis()
             this.teamWon = winTeam
-            broadcast(
-                "game.end.win",
-                NamedTextColor.LIGHT_PURPLE,
-                argumentBuilder = { arrayOf(winTeam.type.name) }
-            )
+            broadcastWinMessage(winTeam)
             giveWinRewards(winTeam)
 
             val taskFireworks = BukkitRunnable {
@@ -318,6 +318,58 @@ class Game(
                 ejectPlayersAndDestroy()
             }.runTaskLater(plugin, 200L)
         }
+    }
+
+    private suspend fun broadcastWinMessage(
+        winTeam: TeamRTF,
+        bestPlayers: Set<String> = setOf("Carlito", "Mcflush", "Poublito")
+    ) {
+        val separator = "<rainbow>--------------------------------".asComponent()
+        val void = Component.empty()
+        val teamColor = winTeam.type.name
+
+        fun broadcastSeparator() =
+            world.players.forEach { it.sendMessage(separator) }
+
+        fun broadcastVoid() =
+            world.players.forEach { it.sendMessage(void) }
+
+        broadcastSeparator()
+        broadcast(
+            "game.end.win",
+            NamedTextColor.LIGHT_PURPLE,
+            argumentBuilder = {
+                val teamName = winTeam.type.name(this, it)
+                    .lowercase()
+                arrayOf("<$teamColor>$teamName</$teamColor>")
+            }
+        )
+        broadcast("game.end.time",
+            NamedTextColor.GRAY,
+            argumentBuilder = {
+                val elapsedTime = ((endTime - startedTime) / 1000)
+                    .toInt()
+                    .formatSeconds()
+                arrayOf("<yellow>$elapsedTime</yellow>")
+            }
+        )
+        broadcastVoid()
+        broadcast("game.end.top", NamedTextColor.GRAY)
+        bestPlayers.forEachIndexed { index, player ->
+            val topColor = when (index) {
+                0 -> NamedTextColor.LIGHT_PURPLE
+                1 -> NamedTextColor.GOLD
+                else -> NamedTextColor.YELLOW
+            }
+            broadcast("game.end.top.${index + 1}",
+                topColor,
+                argumentBuilder = {
+                    arrayOf(player)
+                }
+            )
+        }
+        broadcastVoid()
+        broadcastSeparator()
     }
 
     private fun ejectPlayersAndDestroy() {
