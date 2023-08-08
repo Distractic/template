@@ -4,6 +4,7 @@ import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.game.team.TeamType
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
+import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.game.GameManager
@@ -17,6 +18,7 @@ class RTFCommand(
 
     private val clients: ClientManager by inject(RTFPlugin.ID)
     private val games: GameManager by inject(RTFPlugin.ID)
+    private val translator: Translator by inject(RTFPlugin.ID)
 
     /**
      * rtf - spectate <id>
@@ -53,7 +55,9 @@ class RTFCommand(
                         val client = clients.getClient(player) as ClientRTF
 
                         if (game.getClientTeam(client) != null) {
-                            client.send("join.already.in.team")
+                            client.send(
+                                translator.translate("join.already.in.team", client.lang().locale)
+                            )
                             return@launch
                         }
 
@@ -62,12 +66,12 @@ class RTFCommand(
                 }
             }
 
-            subcommand("start"){
+            subcommand("start") {
                 withPermission("rtf.command.start")
                 playerExecutor { player, _ ->
                     val game = games.getByWorld(player.world) ?: return@playerExecutor
 
-                    if (game.state() != GameState.STARTED){
+                    if (game.state() != GameState.STARTED) {
                         plugin.launch { game.start(true) }
                     } else {
                         player.sendMessage("The game is already started.")
@@ -76,7 +80,7 @@ class RTFCommand(
             }
 
             // DEV
-            subcommand("win"){
+            subcommand("win") {
                 withPermission("rtf.win")
                 stringArgument("team")
                 playerExecutor { player, arg ->
@@ -85,7 +89,7 @@ class RTFCommand(
                     val game = games.getByWorld(player.world) ?: return@playerExecutor
                     val team = game.teams.firstOrNull { it.type == type }
 
-                    if (team == null){
+                    if (team == null) {
                         player.sendMessage("The team '$teamName' does not exist.")
                         return@playerExecutor
                     }
@@ -94,7 +98,7 @@ class RTFCommand(
                 }
             }
 
-            subcommand("end"){
+            subcommand("end") {
                 withPermission("rtf.end")
                 playerExecutor { player, _ ->
                     val game = games.getByWorld(player.world) ?: return@playerExecutor
