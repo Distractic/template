@@ -59,7 +59,7 @@ class RTFCommand(
                         if (game.getClientTeam(client) != null) {
                             client.send(
                                 text(
-                                    translator.translate("join.already.in.team", client.lang().locale),
+                                    translator.get("join.already.in.team", client.lang().locale),
                                     NamedTextColor.RED
                                 )
                             )

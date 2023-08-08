@@ -6,6 +6,7 @@ import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.game.team.TeamType
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.translation.Translator
+import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import net.kyori.adventure.text.Component
@@ -17,9 +18,9 @@ object GameScoreboard {
 
     private val emptyLine = Component.empty()
     private val scoreboardTitle = "<gradient:yellow:gold:red>RushTheFlag"
-        .asComponent().withBold()
+        .asComponent { withBold() }
     private val serverIpAddress = "<gradient:light_purple:dark_purple:red>play.rushy.space"
-        .asComponent().withBold()
+        .asComponent { withBold() }
 
     private val translator: Translator by inject(RTFPlugin.ID)
 
@@ -93,9 +94,9 @@ object GameScoreboard {
         args: Array<Any> = emptyArray(),
         color: NamedTextColor? = null
     ) =
-        translator.translate("scoreboard.$key", locale, args)
-            .asComponent()
-            .color(color ?: NamedTextColor.GRAY)
+        translator.getComponent("scoreboard.$key", locale, args) {
+            color(color ?: NamedTextColor.GRAY)
+        }
 
     private fun translateTeamFlagLine(team: TeamRTF, locale: Locale): Component {
         val key: String
@@ -113,8 +114,6 @@ object GameScoreboard {
         val teamName = team.type.name(translator)
 
         return translateLine(key, locale, arrayOf("<$teamColor>$teamName</$teamColor>"), stateColor)
-            .asComponent()
-
     }
 
     private fun translateStateLine(timeFormatted: String, game: Game, locale: Locale) = when (game.state()) {

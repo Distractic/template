@@ -9,6 +9,7 @@ import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.schedule.SchedulerTask
 import com.github.rushyverse.api.translation.Translator
+import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.config.MapConfig
@@ -147,18 +148,17 @@ class Game(
                 p.teleport(world.spawnLocation)
 
                 p.sendMessage(
-                    plugin.translator.translate(
+                    plugin.translator.getComponent(
                         "game.player.spectate",
                         locale,
                         arrayOf("<yellow>/rtf join</yellow>")
-                    ).asComponent()
-                        .color(NamedTextColor.LIGHT_PURPLE)
+                    ).color(NamedTextColor.LIGHT_PURPLE)
                         .hoverEvent(
                             HoverEvent.showText(
-                                plugin.translator.translate(
+                                plugin.translator.getComponent(
                                     "game.player.spectate.hover",
                                     locale
-                                ).asComponent()
+                                )
                             )
                         )
                         .clickEvent(ClickEvent.runCommand("/rtf join"))
@@ -199,7 +199,7 @@ class Game(
             "player.join.team",
             NamedTextColor.GRAY,
             argumentBuilder = {
-                val translatedTeamName = translate("team.$colorName", it, BUNDLE_API).lowercase()
+                val translatedTeamName = plugin.translator.get("team.$colorName", it, BUNDLE_API).lowercase()
                 arrayOf(
                     player.name,
                     "<$colorName>$translatedTeamName</$colorName>"
@@ -415,7 +415,7 @@ class Game(
         key: String,
         color: NamedTextColor = NamedTextColor.WHITE,
         argumentBuilder: Translator.(Locale) -> Array<Any> = { emptyArray() }
-    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier = { it.color(color) })
+    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier = { color(color) })
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }

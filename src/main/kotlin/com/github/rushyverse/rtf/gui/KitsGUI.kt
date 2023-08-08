@@ -1,11 +1,9 @@
 package com.github.rushyverse.rtf.gui
 
-import com.github.rushyverse.api.extension.asComponent
-import com.github.rushyverse.api.extension.withBold
-import com.github.rushyverse.api.extension.withoutItalic
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.Client
 import com.github.rushyverse.api.translation.Translator
+import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.config.KitConfig
 import com.github.rushyverse.rtf.config.KitsConfig
@@ -27,10 +25,10 @@ class KitsGUI(
     private fun buildKitIcon(kit: KitConfig, locale: Locale) = kit.icon.clone().apply {
         editMeta { meta ->
             meta.displayName(
-                translator.translate(kit.name, locale).asComponent { it.color(NamedTextColor.LIGHT_PURPLE) })
+                translator.getComponent(kit.name, locale) { color(NamedTextColor.LIGHT_PURPLE) })
             meta.lore(
                 listOf(
-                    translator.translate(kit.description, locale).asComponent { it.color(NamedTextColor.GRAY) })
+                    translator.getComponent(kit.description, locale) { color(NamedTextColor.GRAY) })
             )
             meta.removeItemFlags(*ItemFlag.entries.toTypedArray())
         }
