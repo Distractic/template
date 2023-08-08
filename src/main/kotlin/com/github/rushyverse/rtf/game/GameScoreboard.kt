@@ -9,8 +9,8 @@ import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import java.util.*
 
 object GameScoreboard {
@@ -18,7 +18,7 @@ object GameScoreboard {
     private val emptyLine = Component.empty()
     private val scoreboardTitle = "<gradient:yellow:gold:red>RushTheFlag"
         .asComponent().withBold()
-    private val serverIpAddress = "<gradient:gold:light_purple:dark_purple:red>play.rushy.space"
+    private val serverIpAddress = "<gradient:light_purple:dark_purple:red>play.rushy.space"
         .asComponent().withBold()
 
     private val translator: Translator by inject(RTFPlugin.ID)
@@ -70,80 +70,75 @@ object GameScoreboard {
         }
     }
 
-    private fun translateTeamFlagLine(team: TeamRTF, locale: Locale): Component {
-        val color = team.type.color
-        val keyFlagState = if (team.flagStolenState) "scoreboard.team.flag.stolen" else "scoreboard.team.flag.placed"
-        val translateFlagState = translator.translate(keyFlagState, locale)
-        val flagStateColor = if (team.flagStolenState)
-            NamedTextColor.GOLD else NamedTextColor.GREEN
 
-        return text(team.type.name(translator), color)
-            .append(text(": ", NamedTextColor.GRAY))
-            .append(text(translateFlagState, flagStateColor))
-    }
+    private fun translateKillsLine(locale: Locale, kills: Int) =
+        translateLine("kills", locale, arrayOf("<green>$kills"))
 
-    private fun translateKillsLine(locale: Locale, kills: Int): Component {
-        return translator.translate(
-            "scoreboard.kills", locale,
-            arrayOf("<green>$kills")
-        ).asComponent()
-    }
+    private fun translateDeathsLine(locale: Locale, deaths: Int) =
+        translateLine("deaths", locale, arrayOf("<red>$deaths"))
 
-    private fun translateDeathsLine(locale: Locale, deaths: Int): Component {
-        return translator.translate("scoreboard.deaths", locale, arrayOf("<red>$deaths"))
-            .asComponent()
-    }
-
-    private fun translateAttemptsLine(locale: Locale, attempts: Int): Component {
-        return translator.translate(
-            "scoreboard.attempts",
-            locale,
-            arrayOf("<light_purple>$attempts")
-        ).asComponent()
-    }
+    private fun translateAttemptsLine(locale: Locale, attempts: Int) =
+        translateLine("attempts", locale, arrayOf("<light_purple>$attempts"))
 
     private fun translateTeamLine(locale: Locale, type: TeamType): Component {
         val translatedName = type.name(translator, locale)
         val color = type.name.lowercase()
-        val line = translator.translate(
-            "scoreboard.team", locale,
-            arrayOf("<$color>$translatedName</$color>")
-        )
-        return line.asComponent()
+
+        return translateLine("team", locale, arrayOf("<$color>$translatedName"))
     }
 
-    private fun translateStateLine(timeFormatted: String, game: Game, locale: Locale) =
-        when (game.state()) {
-            GameState.WAITING -> translateLine("scoreboard.waiting", locale).color(NamedTextColor.GRAY)
-            GameState.STARTING -> translateLine("scoreboard.starting", locale, arrayOf(timeFormatted))
-            GameState.STARTED -> translateLine("scoreboard.started", locale, arrayOf("<aqua>$timeFormatted"))
-            GameState.ENDING -> translateStateEndLine(game, locale)
+    private fun translateLine(
+        key: String,
+        locale: Locale,
+        args: Array<Any> = emptyArray(),
+        color: NamedTextColor? = null
+    ) =
+        translator.translate("scoreboard.$key", locale, args)
+            .asComponent()
+            .color(color ?: NamedTextColor.GRAY)
+
+    private fun translateTeamFlagLine(team: TeamRTF, locale: Locale): Component {
+        val key: String
+        val stateColor: TextColor
+
+        if (team.flagStolenState) {
+            key = "flag.stolen"
+            stateColor = NamedTextColor.GOLD
+        } else {
+            key = "flag.placed"
+            stateColor = NamedTextColor.GREEN
         }
 
-    private fun translateLine(key: String, locale: Locale, args: Array<Any> = emptyArray()) =
-        translator.translate(
-            key, locale, args
-        ).asComponent()
+        val teamColor = team.type.name
+        val teamName = team.type.name(translator)
 
-    private fun translateStateEndLine(game: Game, locale: Locale): Component {
-        val color = game.teamWon.type.name.lowercase()
-        val teamName = game.teamWon.type.name(translator, locale)
-        val translatedLine = translator.translate(
-            "scoreboard.ending", locale,
-            arrayOf("<$color>$teamName</$color>")
-        )
-        return text(translatedLine)
+        return translateLine(key, locale, arrayOf("<$teamColor>$teamName</$teamColor>"), stateColor)
+            .asComponent()
+
     }
 
-    private fun translateSpectateLine(locale: Locale) = text(
-        translator.translate("scoreboard.spectate.mode", locale),
-        NamedTextColor.LIGHT_PURPLE
-    ).withBold()
+    private fun translateStateLine(timeFormatted: String, game: Game, locale: Locale) = when (game.state()) {
+        GameState.WAITING -> translateLine("waiting", locale)
+        GameState.STARTING -> translateLine("starting", locale, arrayOf(timeFormatted))
+        GameState.STARTED -> translateLine(
+            "started",
+            locale,
+            arrayOf("<yellow>$timeFormatted"),
+            NamedTextColor.LIGHT_PURPLE
+        )
+
+        GameState.ENDING -> translateLine(
+            "ending", locale, arrayOf(
+                "<${game.teamWon.type.name.lowercase()}>${game.teamWon.type.name(translator, locale)}"
+            ),
+            NamedTextColor.LIGHT_PURPLE
+        )
+            .withBold()
+    }
 
     private fun translateJoinUsage(locale: Locale, joinCommandUsage: String) =
-        translator.translate(
-            "scoreboard.spectate.join.usage",
-            locale,
-            arrayOf(joinCommandUsage)
-        ).asComponent().color(NamedTextColor.LIGHT_PURPLE)
+        translateLine("spectate.join.usage", locale, arrayOf(joinCommandUsage), NamedTextColor.LIGHT_PURPLE)
+
+    private fun translateSpectateLine(locale: Locale) =
+        translateLine("spectate.mode", locale, color = NamedTextColor.LIGHT_PURPLE).withBold()
 }
