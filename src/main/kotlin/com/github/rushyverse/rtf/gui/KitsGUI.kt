@@ -1,9 +1,10 @@
 package com.github.rushyverse.rtf.gui
 
 import com.github.rushyverse.api.extension.asComponent
+import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.Client
+import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.rtf.RTFPlugin
-import com.github.rushyverse.rtf.RTFPlugin.Companion.BUNDLE_RTF
 import com.github.rushyverse.rtf.config.KitConfig
 import com.github.rushyverse.rtf.config.KitsConfig
 import com.github.rushyverse.rtf.gui.commons.GUI
@@ -19,20 +20,20 @@ class KitsGUI(
     private val config: KitsConfig
 ) : GUI("menu.kits.title", 9) {
 
+    val translator : Translator by inject(RTFPlugin.ID)
+
     private fun buildKitIcon(kit: KitConfig, locale: Locale) = kit.icon.clone().apply {
         editMeta { meta ->
-            RTFPlugin.translator.also {
-                meta.displayName(it.translate(kit.name, locale, BUNDLE_RTF).asComponent().color(NamedTextColor.LIGHT_PURPLE))
-                meta.lore(listOf(it.translate(kit.description, locale, BUNDLE_RTF).asComponent().color(NamedTextColor.GRAY)))
-            }
+            meta.displayName(translator.translate(kit.name, locale).asComponent().color(NamedTextColor.LIGHT_PURPLE))
+            meta.lore(listOf(translator.translate(kit.description, locale).asComponent().color(NamedTextColor.GRAY)))
             meta.removeItemFlags(*ItemFlag.entries.toTypedArray())
         }
     }
 
-    override fun applyItems(client: Client, inv: Inventory) {
+    override suspend fun applyItems(client: Client, inv: Inventory) {
         config.kits.forEach {
             inv.addItem(
-                buildKitIcon(it, client.lang.locale)
+                buildKitIcon(it, client.lang().locale)
             )
         }
     }
