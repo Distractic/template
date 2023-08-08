@@ -18,6 +18,8 @@ import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.entity.Firework
@@ -137,11 +139,33 @@ class Game(
     }
 
     suspend fun clientSpectate(client: ClientRTF) {
-        val player = client.requirePlayer()
+        val locale = client.lang().locale
+        client.requirePlayer()
+            .let { p ->
+                p.gameMode = GameMode.SPECTATOR
+                p.inventory.clear()
+                p.teleport(world.spawnLocation)
 
-        player.gameMode = GameMode.SPECTATOR
-        player.inventory.clear()
-        player.teleport(world.spawnLocation)
+                p.sendMessage(
+                    plugin.translator.translate(
+                        "game.player.spectate",
+                        locale,
+                        arrayOf("<yellow>/rtf join</yellow>")
+                    ).asComponent()
+                        .color(NamedTextColor.LIGHT_PURPLE)
+                        .hoverEvent(
+                            HoverEvent.showText(
+                                plugin.translator.translate(
+                                    "game.player.spectate.hover",
+                                    locale
+                                ).asComponent()
+                            )
+                        )
+                        .clickEvent(ClickEvent.runCommand("/rtf join"))
+                )
+            }
+
+
 
         if (startedTime == 0L) // Avoid over-using
             GameScoreboard.update(client, this)
