@@ -85,7 +85,7 @@ class GameListener : Listener {
             deathMessage.append("fell into the void")
         }
 
-        val wool = player.inventory.firstOrNull { it.type.isWool() }?.type
+        val wool = player.inventory.firstOrNull { it?.type?.isWool() == true }?.type
         if (wool != null) {
             val flagTeam = game.teams.firstOrNull { it.flagMaterial == wool } ?: return
             game.clientDeathWithFlag(client, flagTeam)
