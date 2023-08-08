@@ -11,6 +11,8 @@ import com.github.rushyverse.rtf.game.GameManager
 import com.github.shynixn.mccoroutine.bukkit.launch
 import dev.jorel.commandapi.arguments.IntegerArgument
 import dev.jorel.commandapi.kotlindsl.*
+import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.format.NamedTextColor
 
 class RTFCommand(
     private val plugin: RTFPlugin
@@ -56,7 +58,10 @@ class RTFCommand(
 
                         if (game.getClientTeam(client) != null) {
                             client.send(
-                                translator.translate("join.already.in.team", client.lang().locale)
+                                text(
+                                    translator.translate("join.already.in.team", client.lang().locale),
+                                    NamedTextColor.RED
+                                )
                             )
                             return@launch
                         }
