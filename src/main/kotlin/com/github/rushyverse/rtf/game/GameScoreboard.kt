@@ -18,9 +18,9 @@ object GameScoreboard {
 
     private val emptyLine = Component.empty()
     private val scoreboardTitle = "<gradient:yellow:gold:red>RushTheFlag"
-        .asComponent { withBold() }
+        .asComponent().withBold()
     private val serverIpAddress = "<gradient:light_purple:dark_purple:red>play.rushy.space"
-        .asComponent { withBold() }
+        .asComponent().withBold()
 
     private val translator: Translator by inject(RTFPlugin.ID)
 
@@ -94,9 +94,7 @@ object GameScoreboard {
         args: Array<Any> = emptyArray(),
         color: NamedTextColor? = null
     ) =
-        translator.getComponent("scoreboard.$key", locale, args) {
-            color(color ?: NamedTextColor.GRAY)
-        }
+        translator.getComponent("scoreboard.$key", locale, args).color(color ?: NamedTextColor.GRAY)
 
     private fun translateTeamFlagLine(team: TeamRTF, locale: Locale): Component {
         val key: String

@@ -415,7 +415,7 @@ class Game(
         key: String,
         color: NamedTextColor = NamedTextColor.WHITE,
         argumentBuilder: Translator.(Locale) -> Array<Any> = { emptyArray() }
-    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier = { color(color) })
+    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier =  { it.color(color) })
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }

@@ -25,10 +25,10 @@ class KitsGUI(
     private fun buildKitIcon(kit: KitConfig, locale: Locale) = kit.icon.clone().apply {
         editMeta { meta ->
             meta.displayName(
-                translator.getComponent(kit.name, locale) { color(NamedTextColor.LIGHT_PURPLE) })
+                translator.getComponent(kit.name, locale).color(NamedTextColor.LIGHT_PURPLE))
             meta.lore(
                 listOf(
-                    translator.getComponent(kit.description, locale) { color(NamedTextColor.GRAY) })
+                    translator.getComponent(kit.description, locale).color(NamedTextColor.GRAY))
             )
             meta.removeItemFlags(*ItemFlag.entries.toTypedArray())
         }
