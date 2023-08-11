@@ -20,11 +20,12 @@ class ClientRTF(
     fun reward(reward: Reward) {
         if (reward.coins > 0) {
             // TODO: inc coins value
-            send("§E+${reward.coins} coins")
+
+            send("<yellow>+${reward.coins} coins")
         }
         if (reward.xp > 0) {
             requirePlayer().giveExp(reward.xp)
-            send("§D+${reward.xp} xp")
+            send("<green>+${reward.xp} xp")
         }
     }
 }
