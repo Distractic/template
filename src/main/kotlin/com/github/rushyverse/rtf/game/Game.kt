@@ -3,18 +3,19 @@ package com.github.rushyverse.rtf.game
 import com.github.rushyverse.api.APIPlugin.Companion.BUNDLE_API
 import com.github.rushyverse.api.extension.BukkitRunnable
 import com.github.rushyverse.api.extension.asComponent
+import com.github.rushyverse.api.extension.format
 import com.github.rushyverse.api.game.GameData
 import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.schedule.SchedulerTask
+import com.github.rushyverse.api.time.FormatTime
 import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.config.MapConfig
 import com.github.rushyverse.rtf.config.RTFConfig
-import com.github.rushyverse.rtf.ext.formatSeconds
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
 import net.kyori.adventure.text.Component
@@ -32,6 +33,7 @@ import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random.Default.nextBoolean
 import kotlin.random.Random.Default.nextInt
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 class Game(
@@ -127,11 +129,18 @@ class Game(
      * formatted time since the game was started.
      */
     private suspend fun gameTimeTask() {
-        val time = (System.currentTimeMillis() - startedTime) / 1000
-        val timeFormatted = time.toInt().formatSeconds()
-        for (player in players) {
-            val client = clients.getClient(player) as ClientRTF
-            GameScoreboard.update(client, this, timeFormatted)
+        val time = (System.currentTimeMillis() - startedTime)
+            .milliseconds
+
+        val clientsByLang = clients.clients.values
+            .filter { it.player?.world == world }
+            .groupBy { it.lang() }
+
+        clientsByLang.keys.forEach { lang ->
+            val format = time.format(FormatTime.short(plugin.translator, lang.locale))
+            clientsByLang[lang]?.forEach {
+                GameScoreboard.update(it as ClientRTF, this, format)
+            }
         }
     }
 
@@ -371,9 +380,8 @@ class Game(
         broadcast("game.end.time",
             NamedTextColor.GRAY,
             argumentBuilder = {
-                val elapsedTime = ((endTime - startedTime) / 1000)
-                    .toInt()
-                    .formatSeconds()
+                val elapsedTime = (endTime - startedTime)
+                    .milliseconds.format(FormatTime.long(this, it))
                 arrayOf("<yellow>$elapsedTime</yellow>")
             }
         )
@@ -415,7 +423,7 @@ class Game(
         key: String,
         color: NamedTextColor = NamedTextColor.WHITE,
         argumentBuilder: Translator.(Locale) -> Array<Any> = { emptyArray() }
-    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier =  { it.color(color) })
+    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier = { it.color(color) })
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }
