@@ -1,11 +1,8 @@
 package com.github.rushyverse.rtf.gui
 
-import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.Client
-import com.github.rushyverse.api.translation.Translator
 import com.github.rushyverse.api.translation.getComponent
-import com.github.rushyverse.rtf.RTFPlugin
-import com.github.rushyverse.rtf.config.KitConfig
+import com.github.rushyverse.rtf.config.Kit
 import com.github.rushyverse.rtf.config.KitsConfig
 import com.github.rushyverse.rtf.gui.commons.GUI
 import net.kyori.adventure.text.format.NamedTextColor
@@ -13,16 +10,13 @@ import org.bukkit.event.inventory.ClickType
 import org.bukkit.inventory.Inventory
 import org.bukkit.inventory.ItemFlag
 import org.bukkit.inventory.ItemStack
-import org.bukkit.inventory.PlayerInventory
 import java.util.*
 
 class KitsGUI(
     private val config: KitsConfig
 ) : GUI("menu.kits.title", 9) {
 
-    val translator: Translator by inject(RTFPlugin.ID)
-
-    private fun buildKitIcon(kit: KitConfig, locale: Locale) = kit.icon.clone().apply {
+    private fun buildKitIcon(kit: Kit, locale: Locale) = kit.icon.clone().apply {
         editMeta { meta ->
             meta.displayName(
                 translator.getComponent(kit.name, locale).color(NamedTextColor.LIGHT_PURPLE))
@@ -44,23 +38,11 @@ class KitsGUI(
 
     override fun onClick(client: Client, item: ItemStack, clickType: ClickType) {
         val type = item.type
-
         val selectedKit = config.kits.firstOrNull { it.icon.type == type } ?: return
 
         client.requirePlayer().inventory.apply {
             clear()
-            sendKitItems(this, selectedKit)
+            selectedKit.sendItems(this)
         }
-    }
-
-    private fun sendKitItems(inventory: PlayerInventory, kit: KitConfig) {
-        kit.armor.also {
-            inventory.helmet = it.helmet
-            inventory.chestplate = it.chestplate
-            inventory.leggings = it.leggings
-            inventory.boots = it.boots
-        }
-
-        inventory.addItem(*kit.items.toTypedArray())
     }
 }

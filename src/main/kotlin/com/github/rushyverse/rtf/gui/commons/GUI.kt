@@ -15,7 +15,7 @@ abstract class GUI(
     val size: Int,
 ) {
 
-    private val translator : Translator by inject(RTFPlugin.ID)
+    protected val translator : Translator by inject(RTFPlugin.ID)
     val viewers: MutableList<Client> = mutableListOf()
 
     suspend fun open(client: Client) {

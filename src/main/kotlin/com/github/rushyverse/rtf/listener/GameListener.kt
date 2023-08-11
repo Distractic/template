@@ -61,15 +61,15 @@ class GameListener : Listener {
         val team = game.getClientTeam(client) ?: return
         val killer = player.killer
 
-        if (game.state() != GameState.STARTED){
+        event.keepInventory = true
+
+        if (game.state() != GameState.STARTED) {
             player.teleport(team.spawnPoint)
             event.deathMessage(null)
             return
         }
 
         client.stats.incDeaths()
-
-        event.keepInventory = true
 
         val deathMessage = StringBuilder(player.name)
         deathMessage.append(" ")

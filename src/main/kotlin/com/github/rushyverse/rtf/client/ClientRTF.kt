@@ -1,6 +1,7 @@
 package com.github.rushyverse.rtf.client
 
 import com.github.rushyverse.api.player.Client
+import com.github.rushyverse.rtf.config.Kit
 import com.github.rushyverse.rtf.config.Reward
 import kotlinx.coroutines.CoroutineScope
 import java.util.*
@@ -10,6 +11,12 @@ class ClientRTF(
     uuid: UUID,
     scope: CoroutineScope
 ) : Client(uuid, scope) {
+
+    /**
+     * Represents the current kit of the player.
+     * Null by default.
+     */
+    var kit: Kit? = null
 
     /**
      * Gives instantly a reward to the client.

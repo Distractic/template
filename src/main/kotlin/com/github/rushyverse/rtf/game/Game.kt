@@ -19,7 +19,6 @@ import com.github.rushyverse.rtf.config.RTFConfig
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
 import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.Component.text
 import net.kyori.adventure.text.event.ClickEvent
 import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
@@ -63,20 +62,6 @@ class Game(
 
     fun state(): GameState = data.state
 
-    fun sendBasicKit(player: Player) {
-        val inv = player.inventory
-
-        inv.helmet = ItemStack(Material.LEATHER_HELMET)
-        inv.chestplate = ItemStack(Material.LEATHER_CHESTPLATE)
-        inv.leggings = ItemStack(Material.LEATHER_LEGGINGS)
-        inv.boots = ItemStack(Material.LEATHER_BOOTS)
-        inv.addItem(ItemStack(Material.IRON_SWORD))
-        inv.addItem(ItemStack(Material.IRON_PICKAXE))
-        inv.addItem(ItemStack(Material.SMOOTH_SANDSTONE).apply { amount = 64 })
-
-        player.sendActionBar(text("§EKit actuel : §6Basique"))
-    }
-
     suspend fun start(force: Boolean = false) {
         if (force) {
             data.state = GameState.STARTED
@@ -87,7 +72,6 @@ class Game(
                 team.members.forEach { member ->
                     member.requirePlayer().apply {
                         teleport(team.spawnPoint)
-                        sendBasicKit(this)
                     }
                 }
             }
@@ -196,13 +180,13 @@ class Game(
             player.teleport(it.spawnPoint)
             player.gameMode = GameMode.SURVIVAL
             it.members.add(client)
-
             player.displayName(player.displayName().color(it.type.color))
         }
         val colorName = joinedTeam.type.name.lowercase()
 
-        if (startedTime == 0L)
-            GameScoreboard.update(client, this)
+        client.kit = plugin.configKits.kits.firstOrNull()?.apply {
+            sendItems(player.inventory)
+        }
 
         broadcast(
             "player.join.team",
@@ -215,6 +199,9 @@ class Game(
                 )
             }
         )
+
+        if (startedTime == 0L)
+            GameScoreboard.update(client, this)
     }
 
     suspend fun clientLeave(client: ClientRTF) {
@@ -285,8 +272,8 @@ class Game(
     fun clientDeathWithFlag(client: ClientRTF, flagTeam: TeamRTF) {
         client.requirePlayer().apply {
             inventory.clear()
-            sendBasicKit(this)
             removePotionEffect(PotionEffectType.SPEED)
+            client.kit?.sendItems(inventory)
         }
 
         flagTeam.flagStolenState = false
