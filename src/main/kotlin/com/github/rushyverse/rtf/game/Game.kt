@@ -181,6 +181,7 @@ class Game(
             player.gameMode = GameMode.SURVIVAL
             it.members.add(client)
             player.displayName(player.displayName().color(it.type.color))
+            player.playerListName(player.displayName())
         }
         val colorName = joinedTeam.type.name.lowercase()
 
@@ -214,6 +215,7 @@ class Game(
 
         client.player?.apply {
             displayName(displayName().color(NamedTextColor.WHITE))
+            playerListName(displayName())
         }
 
         // Leave while game is starting and the current number of players is not reached
@@ -397,8 +399,12 @@ class Game(
     }
 
     private fun ejectPlayersAndDestroy() {
-        for (player in players) {
-            player.performCommand(config.game.backToHubCommand)
+        players.forEach { player ->
+            player.apply {
+                displayName(displayName().color(NamedTextColor.WHITE))
+                playerListName(displayName())
+                performCommand(config.game.backToHubCommand)
+            }
         }
 
         BukkitRunnable {
