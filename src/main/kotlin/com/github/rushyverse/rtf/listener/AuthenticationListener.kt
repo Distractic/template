@@ -1,18 +1,10 @@
 package com.github.rushyverse.rtf.listener
 
-import com.github.rushyverse.api.koin.inject
-import com.github.rushyverse.api.player.ClientManager
-import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
-import com.github.rushyverse.rtf.game.GameManager
 import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerQuitEvent
 
-class AuthenticationListener : Listener {
-
-    private val games : GameManager by inject(RTFPlugin.ID)
-    private val clients : ClientManager by inject(RTFPlugin.ID)
+class AuthenticationListener : ListenerRTF() {
 
     @EventHandler
     suspend fun onQuit(event: PlayerQuitEvent) {

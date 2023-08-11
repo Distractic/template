@@ -1,23 +1,19 @@
 package com.github.rushyverse.rtf.listener
 
 import com.github.rushyverse.api.extension.event.cancel
+import com.github.rushyverse.api.extension.event.cancelIf
 import com.github.rushyverse.api.extension.isWool
 import com.github.rushyverse.api.game.GameState
-import com.github.rushyverse.api.koin.inject
-import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.player.getTypedClient
 import com.github.rushyverse.api.translation.getComponent
-import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.game.Game
-import com.github.rushyverse.rtf.game.GameManager
 import com.github.rushyverse.rtf.game.TeamRTF
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.GameMode
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Villager
 import org.bukkit.event.EventHandler
-import org.bukkit.event.Listener
 import org.bukkit.event.block.BlockBreakEvent
 import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageEvent
@@ -25,20 +21,14 @@ import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.*
 import org.bukkit.inventory.PlayerInventory
 
-class GameListener : Listener {
-
-    private val plugin: RTFPlugin by inject(RTFPlugin.ID)
-    private val games: GameManager by inject(RTFPlugin.ID)
-    private val clients: ClientManager by inject(RTFPlugin.ID)
+class GameListener : ListenerRTF() {
 
     @EventHandler
     suspend fun onChangeWorld(event: PlayerChangedWorldEvent) {
         val from = event.from
-
-        if (from.name.contains("rtf")) {
+        if (isRTFWorld(from)) {
             val game = games.getByWorld(from) ?: return
             val player = event.player
-
             game.clientLeave(clients.getTypedClient(player))
         }
     }
@@ -46,20 +36,20 @@ class GameListener : Listener {
     @EventHandler
     suspend fun onClickVillager(event: PlayerInteractEntityEvent) {
         val player = event.player
-        val game = games.getByWorld(player.world) ?: return
-        val entity = event.rightClicked
-        if (entity is Villager) {
-            val client = clients.getTypedClient<ClientRTF>(player)
 
-            event.cancel()
+        event.cancelIf { isRTFWorld(player.world) }
 
-            plugin.kitsGui.open(client)
+        if (event.rightClicked is Villager) {
+            plugin.kitsGui.open(clients.getTypedClient<ClientRTF>(player))
         }
     }
 
     @EventHandler
     suspend fun onPlayerDeath(event: PlayerDeathEvent) {
         val player = event.player
+
+        if (!isRTFWorld(player.world)) { return }
+
         val game = games.getByWorld(player.world) ?: return
         val client = clients.getTypedClient<ClientRTF>(player)
         val team = game.getClientTeam(client) ?: return

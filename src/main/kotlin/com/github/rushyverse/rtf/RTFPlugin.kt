@@ -56,10 +56,7 @@ class RTFPlugin : Plugin(ID, BUNDLE_RTF) {
 
         RTFCommand(this).register()
 
-        registerListener { GUIListener(this, setOf(kitsGui)) }
-        registerListener { AuthenticationListener() }
-        registerListener { UndesirableEventListener() }
-        registerListener { GameListener() }
+        registerListeners()
     }
 
     private fun loadConfiguration() {
@@ -81,6 +78,13 @@ class RTFPlugin : Plugin(ID, BUNDLE_RTF) {
         } else {
             mkdirs()
         }
+    }
+
+    private fun registerListeners() {
+        registerListener { GUIListener(setOf(kitsGui)) }
+        registerListener { AuthenticationListener() }
+        registerListener { UndesirableEventListener() }
+        registerListener { GameListener() }
     }
 
     override fun createClient(player: Player): Client {
