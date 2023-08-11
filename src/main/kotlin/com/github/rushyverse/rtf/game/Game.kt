@@ -266,7 +266,12 @@ class Game(
             }
         }
 
-        client.send("you.have.flag")
+        player.sendMessage(
+            plugin.translator.getComponent(
+                "player.pickup.flag.info",
+                client.lang().locale
+            ).color(NamedTextColor.GREEN)
+        )
     }
 
     fun clientDeathWithFlag(client: ClientRTF, flagTeam: TeamRTF) {

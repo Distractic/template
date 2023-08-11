@@ -6,10 +6,13 @@ import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.player.getTypedClient
+import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
+import com.github.rushyverse.rtf.game.Game
 import com.github.rushyverse.rtf.game.GameManager
-import net.kyori.adventure.text.Component
+import com.github.rushyverse.rtf.game.TeamRTF
+import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.GameMode
 import org.bukkit.entity.EntityType
 import org.bukkit.entity.Villager
@@ -20,10 +23,11 @@ import org.bukkit.event.block.BlockPlaceEvent
 import org.bukkit.event.entity.EntityDamageEvent
 import org.bukkit.event.entity.PlayerDeathEvent
 import org.bukkit.event.player.*
+import org.bukkit.inventory.PlayerInventory
 
 class GameListener : Listener {
 
-    private val plugin : RTFPlugin by inject(RTFPlugin.ID)
+    private val plugin: RTFPlugin by inject(RTFPlugin.ID)
     private val games: GameManager by inject(RTFPlugin.ID)
     private val clients: ClientManager by inject(RTFPlugin.ID)
 
@@ -60,41 +64,64 @@ class GameListener : Listener {
         val client = clients.getTypedClient<ClientRTF>(player)
         val team = game.getClientTeam(client) ?: return
         val killer = player.killer
+        val flagTeam = findTeamFlagInInventory(player.inventory, game)
 
         event.keepInventory = true
+        event.deathMessage(null)
 
         if (game.state() != GameState.STARTED) {
             player.teleport(team.spawnPoint)
-            event.deathMessage(null)
             return
         }
 
         client.stats.incDeaths()
 
-        val deathMessage = StringBuilder(player.name)
-        deathMessage.append(" ")
+        val playerColor = team.type.name.lowercase()
+        val deathTypeKey: String
+        val args: MutableSet<Any> = mutableSetOf()
 
-        if (killer != null) {
+        args.add("<$playerColor>${player.name}</$playerColor>")
+        if (killer == null) {
+            deathTypeKey = "player.death.void"
+        } else {
             val clientKiller = clients.getTypedClient<ClientRTF>(killer)
-
+            val killerTeam = game.getClientTeam(clientKiller)
+            val killerColor = killerTeam?.type?.name?.lowercase() ?: "white"
             clientKiller.stats.incKills()
             clientKiller.reward(game.config.rewards.kill)
-
-            deathMessage.append("was killed by ${killer.name}")
-        } else {
-            deathMessage.append("fell into the void")
+            deathTypeKey = "player.death.killed"
+            args.add("<$killerColor>${killer.name}</$killerColor>")
         }
 
-        val wool = player.inventory.firstOrNull { it?.type?.isWool() == true }?.type
-        if (wool != null) {
-            val flagTeam = game.teams.firstOrNull { it.flagMaterial == wool } ?: return
+        if (flagTeam == null) {
+            game.broadcast(
+                deathTypeKey,
+                NamedTextColor.GRAY,
+                argumentBuilder = { args.toTypedArray() }
+            )
+        } else {
+            val flagColor = flagTeam.type.name.lowercase()
             game.clientDeathWithFlag(client, flagTeam)
 
-            deathMessage.append(" with the ${flagTeam.type.name} flag!")
+            game.broadcast(
+                "player.death.with.flag",
+                NamedTextColor.GRAY,
+                argumentBuilder = {
+                    val teamName = flagTeam.type.name(this, it).lowercase()
+                    arrayOf(
+                        get(deathTypeKey, it, args.toTypedArray()),
+                        "<$flagColor>${teamName}</$flagColor>"
+                    )
+                }
+            )
+        }
+    }
+
+    private fun findTeamFlagInInventory(inv: PlayerInventory, game: Game): TeamRTF? =
+        inv.firstOrNull { it?.type?.isWool() == true }?.type?.let { wool ->
+            game.teams.firstOrNull { it.flagMaterial == wool }
         }
 
-        event.deathMessage(Component.text(deathMessage.toString()))
-    }
 
     @EventHandler
     suspend fun onEntityDamage(event: EntityDamageEvent) {
@@ -194,13 +221,19 @@ class GameListener : Listener {
             val type = event.block.type
 
             when {
-                type.name.contains("WOOL") -> {
+                type.isWool() -> {
 
                     val flagTeam = game.teams.firstOrNull { it.flagMaterial == type } ?: return
 
                     if (flagTeam == game.getClientTeam(client)) {
                         event.isCancelled = true
-                        client.send("cant.break.your.team.flag")
+
+                        player.sendMessage(
+                            plugin.translator.getComponent(
+                                "player.pickup.own.flag",
+                                client.lang().locale
+                            ).color(NamedTextColor.RED)
+                        )
                     } else {
                         event.isDropItems = false
                         game.clientPickupFlag(client, flagTeam)
