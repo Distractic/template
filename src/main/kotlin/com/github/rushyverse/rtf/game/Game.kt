@@ -1,11 +1,15 @@
 package com.github.rushyverse.rtf.game
 
+import com.github.rushyverse.api.APIPlugin.Companion.BUNDLE_API
 import com.github.rushyverse.api.extension.BukkitRunnable
+import com.github.rushyverse.api.extension.asComponent
 import com.github.rushyverse.api.game.GameData
 import com.github.rushyverse.api.game.GameState
 import com.github.rushyverse.api.koin.inject
 import com.github.rushyverse.api.player.ClientManager
 import com.github.rushyverse.api.schedule.SchedulerTask
+import com.github.rushyverse.api.translation.Translator
+import com.github.rushyverse.api.translation.getComponent
 import com.github.rushyverse.rtf.RTFPlugin
 import com.github.rushyverse.rtf.client.ClientRTF
 import com.github.rushyverse.rtf.config.MapConfig
@@ -13,7 +17,10 @@ import com.github.rushyverse.rtf.config.RTFConfig
 import com.github.rushyverse.rtf.ext.formatSeconds
 import com.github.shynixn.mccoroutine.bukkit.launch
 import com.github.shynixn.mccoroutine.bukkit.scope
+import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.Component.text
+import net.kyori.adventure.text.event.ClickEvent
+import net.kyori.adventure.text.event.HoverEvent
 import net.kyori.adventure.text.format.NamedTextColor
 import org.bukkit.*
 import org.bukkit.entity.Firework
@@ -21,6 +28,7 @@ import org.bukkit.entity.Player
 import org.bukkit.inventory.ItemStack
 import org.bukkit.potion.PotionEffect
 import org.bukkit.potion.PotionEffectType
+import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random.Default.nextBoolean
 import kotlin.random.Random.Default.nextInt
@@ -40,12 +48,11 @@ class Game(
 
     val gameTask = SchedulerTask(plugin.scope, 1.seconds)
 
-    val minPlayers = 2 // to delete, use config instead
-
     val teams: List<TeamRTF> = mapConfig.teams.map { TeamRTF(it, world) }
 
     val createdTime = System.currentTimeMillis()
     var startedTime: Long = 0 // value set when the game starts
+    var endTime: Long = 0 // value set when the game ends
 
     private val clients: ClientManager by inject(plugin.id)
     private val manager: GameManager by inject(plugin.id)
@@ -109,7 +116,7 @@ class Game(
         broadcast(
             "game.message.starting",
             NamedTextColor.GREEN,
-            arrayOf("$time")
+            argumentBuilder = { arrayOf("$time") }
         )
         atomicTime.set(time - 1)
     }
@@ -133,11 +140,32 @@ class Game(
     }
 
     suspend fun clientSpectate(client: ClientRTF) {
-        val player = client.requirePlayer()
+        val locale = client.lang().locale
+        client.requirePlayer()
+            .let { p ->
+                p.gameMode = GameMode.SPECTATOR
+                p.inventory.clear()
+                p.teleport(world.spawnLocation)
 
-        player.gameMode = GameMode.SPECTATOR
-        player.inventory.clear()
-        player.teleport(world.spawnLocation)
+                p.sendMessage(
+                    plugin.translator.getComponent(
+                        "game.player.spectate",
+                        locale,
+                        arrayOf("<yellow>/rtf join</yellow>")
+                    ).color(NamedTextColor.LIGHT_PURPLE)
+                        .hoverEvent(
+                            HoverEvent.showText(
+                                plugin.translator.getComponent(
+                                    "game.player.spectate.hover",
+                                    locale
+                                )
+                            )
+                        )
+                        .clickEvent(ClickEvent.runCommand("/rtf join"))
+                )
+            }
+
+
 
         if (startedTime == 0L) // Avoid over-using
             GameScoreboard.update(client, this)
@@ -170,7 +198,13 @@ class Game(
         broadcast(
             "player.join.team",
             NamedTextColor.GRAY,
-            arrayOf(player.name, "team.$colorName")
+            argumentBuilder = {
+                val translatedTeamName = plugin.translator.get("team.$colorName", it, BUNDLE_API).lowercase()
+                arrayOf(
+                    player.name,
+                    "<$colorName>$translatedTeamName</$colorName>"
+                )
+            }
         )
     }
 
@@ -187,7 +221,7 @@ class Game(
         }
 
         // Leave while game is starting and the current number of players is not reached
-        if (playersSize < minPlayers) {
+        if (playersSize < config.game.minPlayers) {
 
             when (data.state) {
                 GameState.STARTING -> {
@@ -220,7 +254,7 @@ class Game(
         broadcast(
             "player.pickup.flag",
             NamedTextColor.GOLD,
-            arrayOf(player.name, flagTeam.type.name)
+            argumentBuilder = { arrayOf(player.name, flagTeam.type.name) }
         )
         client.reward(config.rewards.flagPickUp)
 
@@ -259,7 +293,7 @@ class Game(
         broadcast(
             "player.place.flag",
             NamedTextColor.GOLD,
-            arrayOf(player.name, flagTeam.type.name)
+            argumentBuilder = { arrayOf(player.name, flagTeam.type.name) }
         )
         client.reward(config.rewards.flagPlace)
 
@@ -291,12 +325,9 @@ class Game(
             broadcast("game.end.other", NamedTextColor.RED)
             ejectPlayersAndDestroy()
         } else {
+            this.endTime = System.currentTimeMillis()
             this.teamWon = winTeam
-            broadcast(
-                "game.end.win",
-                NamedTextColor.LIGHT_PURPLE,
-                arrayOf(winTeam.type.name)
-            )
+            broadcastWinMessage(winTeam)
             giveWinRewards(winTeam)
 
             val taskFireworks = BukkitRunnable {
@@ -311,6 +342,58 @@ class Game(
                 ejectPlayersAndDestroy()
             }.runTaskLater(plugin, 200L)
         }
+    }
+
+    private suspend fun broadcastWinMessage(
+        winTeam: TeamRTF,
+        bestPlayers: Set<String> = setOf("Carlito", "Mcflush", "Poublito")
+    ) {
+        val separator = "<rainbow>--------------------------------".asComponent()
+        val void = Component.empty()
+        val teamColor = winTeam.type.name
+
+        fun broadcastSeparator() =
+            world.players.forEach { it.sendMessage(separator) }
+
+        fun broadcastVoid() =
+            world.players.forEach { it.sendMessage(void) }
+
+        broadcastSeparator()
+        broadcast(
+            "game.end.win",
+            NamedTextColor.LIGHT_PURPLE,
+            argumentBuilder = {
+                val teamName = winTeam.type.name(this, it)
+                    .lowercase()
+                arrayOf("<$teamColor>$teamName</$teamColor>")
+            }
+        )
+        broadcast("game.end.time",
+            NamedTextColor.GRAY,
+            argumentBuilder = {
+                val elapsedTime = ((endTime - startedTime) / 1000)
+                    .toInt()
+                    .formatSeconds()
+                arrayOf("<yellow>$elapsedTime</yellow>")
+            }
+        )
+        broadcastVoid()
+        broadcast("game.end.top", NamedTextColor.GRAY)
+        bestPlayers.forEachIndexed { index, player ->
+            val topColor = when (index) {
+                0 -> NamedTextColor.LIGHT_PURPLE
+                1 -> NamedTextColor.GOLD
+                else -> NamedTextColor.YELLOW
+            }
+            broadcast("game.end.top.${index + 1}",
+                topColor,
+                argumentBuilder = {
+                    arrayOf(player)
+                }
+            )
+        }
+        broadcastVoid()
+        broadcastSeparator()
     }
 
     private fun ejectPlayersAndDestroy() {
@@ -331,8 +414,8 @@ class Game(
     suspend fun broadcast(
         key: String,
         color: NamedTextColor = NamedTextColor.WHITE,
-        args: Array<Any> = emptyArray()
-    ) = plugin.broadcast(world, key, color, args)
+        argumentBuilder: Translator.(Locale) -> Array<Any> = { emptyArray() }
+    ) = plugin.broadcast(world.players, key, argumentBuilder = argumentBuilder, messageModifier =  { it.color(color) })
 
     fun isProtectedLocation(location: Location): Boolean {
         return teams.any { it.spawnCuboid.isInArea(location) || it.flagCuboid.isInArea(location) }
