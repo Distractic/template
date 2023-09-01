@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.gradle.kotlin.dsl.`kotlin-dsl`
 
 plugins {
     embeddedKotlin("jvm")
@@ -7,9 +6,6 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
     `java-library`
 }
-
-group = "com.github.rushyverse"
-version = "1.0-SNAPSHOT"
 
 repositories {
     mavenCentral()
@@ -21,12 +17,15 @@ repositories {
 
 dependencies {
     val paperVersion = "1.19-R0.1-SNAPSHOT"
-    val rushyApiVersion = "1.0.0"
+    val rushyApiVersion = "2.0.0"
     val commandApiVersion = "9.0.3"
 
     compileOnly(kotlin("stdlib"))
 
-    compileOnly("io.papermc.paper:paper-api:$paperVersion")
+    "io.papermc.paper:paper-api:$paperVersion".let {
+        compileOnly(it)
+        testImplementation(it)
+    }
 
     compileOnly("com.github.Rushyverse:api:$rushyApiVersion")
 
