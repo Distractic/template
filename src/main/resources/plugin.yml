@@ -1,8 +1,8 @@
 name: rtf
 version: 1.0
-author: Quentixx
-api-version: 1.19
+author: Rushyverse
+api-version: 1.20
 main: com.github.rushyverse.rtf.RTFPlugin
 depend:
-  - paper-api
+  - api
   - CommandAPI
